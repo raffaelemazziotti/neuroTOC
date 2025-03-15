@@ -137,12 +137,13 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         function searchArticles() {
             const input = document.getElementById('searchInput');
             const filter = input.value.toLowerCase();
-            const articles = document.getElementsByClassName('article-item');
+            const visibleSection = document.querySelector('.journal-content[style="display: block;"]');
+            const articles = visibleSection.querySelectorAll('.article-item');
 
-            for (let i = 0; i < articles.length; i++) {
-                const text = articles[i].textContent || articles[i].innerText;
-                articles[i].style.display = text.toLowerCase().includes(filter) ? '' : 'none';
-            }
+            articles.forEach(article => {
+                const text = article.textContent || article.innerText;
+                article.style.display = text.toLowerCase().includes(filter) ? '' : 'none';
+            });
         }
 
         function scrollToTop() {
@@ -166,7 +167,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     html_content.append('</select>')
 
     # Floating Home Button
-    html_content.append('<button onclick="scrollToTop()" class="home-button">⬆️ Home</button>')
+    html_content.append('<button onclick="scrollToTop()" class="home-button">⬆️</button>')
 
     # All Journals Section
     html_content.append('<div id="All_Journals" class="journal-content" style="display:block;">')
@@ -223,14 +224,13 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                 pub_date = article.find('PublicationDate').text
                 art_type = article.find('Type').text
                 abstract = article.find('Abstract').text or "No preview available"
-                preview = abstract[:200] + "..." if len(abstract) > 200 else abstract
 
                 html_content.append(f"""
                     <li class='article-item'>
                         <strong>{title}</strong> ({art_type})<br>
                         <em>Authors:</em> {authors}<br>
                         <em>Published:</em> {pub_date}<br>
-                        <a href='{doi}' target='_blank' class='article-link' data-tooltip='{preview}'>Read More</a><br>
+                        <a href='{doi}' target='_blank' class='article-link' data-tooltip='{abstract[:200]}...'>Read More</a><br>
                         <p>{abstract}</p>
                     </li>
                 """)
@@ -247,8 +247,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
 
     print(f"HTML file saved to {html_file}")
 
-
 # Main execution
-#journals = get_journal_info()
-#save_all_toc_to_xml(journals)
+journals = get_journal_info()
+save_all_toc_to_xml(journals)
 generate_html_from_xml()

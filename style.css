@@ -1,14 +1,18 @@
+/* General Body Styling */
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
-    margin: 10px;
-    padding: 0;
+    margin: 0;
+    padding: 0 10px;
+    overflow-x: hidden;
 }
 
+/* Headings */
 h1 {
     text-align: center;
-    font-size: 1.5em;
+    font-size: 2em;
     color: #333;
+    margin: 20px 0;
 }
 
 h2, h3 {
@@ -16,6 +20,7 @@ h2, h3 {
     padding-left: 5px;
 }
 
+/* Article List */
 ul {
     list-style-type: none;
     padding: 0;
@@ -23,33 +28,29 @@ ul {
 
 li, p.article-item {
     background: #fff;
-    padding: 12px;
-    margin: 8px 0;
+    padding: 15px;
+    margin: 10px 0;
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
+/* Links */
 a {
     color: #2196F3;
     text-decoration: none;
 }
 
-#journalSelect {
+/* Dropdown & Search Input */
+#journalSelect, #searchInput {
     width: 100%;
-    padding: 12px;
+    padding: 14px;
     border: 1px solid #ccc;
     border-radius: 8px;
     margin-bottom: 20px;
+    font-size: 16px;
 }
 
-#searchInput {
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 20px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-}
-
+/* Tooltip Styling */
 .tooltip {
     position: absolute;
     display: none;
@@ -58,32 +59,53 @@ a {
     padding: 10px;
     border-radius: 6px;
     max-width: 90%;
-    font-size: 12px;
+    font-size: 14px;
     z-index: 1000;
     box-shadow: 0px 2px 5px rgba(0,0,0,0.5);
 }
 
+/* Floating Home Button */
 .home-button {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    padding: 15px;
+    padding: 16px;
     background-color: #4CAF50;
     color: white;
     border: none;
     border-radius: 50%;
     cursor: pointer;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    font-size: 18px;
+    font-size: 20px;
+    z-index: 1001;
+    transition: all 0.3s ease;
 }
 
 .home-button:hover {
     background-color: #45a049;
+    transform: scale(1.1);
 }
 
+/* Responsive Design */
 @media screen and (max-width: 600px) {
-    .home-button {
+    h1 {
+        font-size: 1.5em;
+    }
+
+    #journalSelect, #searchInput {
+        font-size: 18px;
+        padding: 16px;
+    }
+
+    li, p.article-item {
         padding: 12px;
         font-size: 16px;
+    }
+
+    .home-button {
+        padding: 14px;
+        font-size: 18px;
+        bottom: 15px;
+        right: 15px;
     }
 }
