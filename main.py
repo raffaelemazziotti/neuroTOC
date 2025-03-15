@@ -175,7 +175,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     <html>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Journal TOC</title>
+        <title>Neuro TOC</title>
         <link rel="stylesheet" type="text/css" href="style.css">
         <script src="script.js" defer></script>
     </head>
