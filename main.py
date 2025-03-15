@@ -234,6 +234,6 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
 
 
 # Main execution
-#journals = get_journal_info()
-#save_all_toc_to_xml(journals)
+journals = get_journal_info()
+save_all_toc_to_xml(journals)
 generate_html_from_xml()
