@@ -141,7 +141,8 @@ a:hover {
 .home-button {
     position: fixed;
     bottom: 30px;
-    right: 30px;
+    left: 50%;
+    transform: translateX(-50%);
     width: 60px;
     height: 60px;
     background: linear-gradient(145deg, #5e81ac, #81a1c1);
@@ -159,7 +160,7 @@ a:hover {
 }
 
 .home-button:hover {
-    transform: scale(1.1);
+    transform: translateX(-50%) scale(1.1);
     background: linear-gradient(145deg, #81a1c1, #88c0d0);
 }
 
@@ -175,7 +176,8 @@ a:hover {
         height: 50px;
         font-size: 24px;
         bottom: 20px;
-        right: 20px;
+        left: 50%;
+        transform: translateX(-50%);
     }
 
     li {
