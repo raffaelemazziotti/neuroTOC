@@ -160,6 +160,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         '<option value="All_Journals">All Journals</option>'
     ]
 
+    # Add dropdown options and sanitize journal names for IDs
     for journal in root.findall('Journal'):
         journal_id = journal.get('name').replace(" ", "_").replace(":", "").replace("/", "").replace("-", "_")
         html_content.append(f'<option value="{journal_id}">{journal.get("name")}</option>')
@@ -175,8 +176,9 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
 
     for journal in root.findall('Journal'):
         journal_name = journal.get('name')
-        html_content.append(f'<h3>{journal_name}</h3>')
+        journal_id = journal_name.replace(" ", "_").replace(":", "").replace("/", "").replace("-", "_")
 
+        html_content.append(f'<h3>{journal_name}</h3>')
         articles = journal.findall('Article')
         if articles:
             html_content.append('<ul>')
@@ -187,14 +189,13 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                 pub_date = article.find('PublicationDate').text
                 art_type = article.find('Type').text
                 abstract = article.find('Abstract').text or "No preview available"
-                preview = abstract[:200] + "..." if len(abstract) > 200 else abstract
 
                 html_content.append(f"""
                     <li class='article-item'>
                         <strong>{title}</strong> ({art_type})<br>
                         <em>Authors:</em> {authors}<br>
                         <em>Published:</em> {pub_date}<br>
-                        <a href='{doi}' target='_blank' class='article-link' data-tooltip='{preview}'>Read More</a><br>
+                        <a href='{doi}' target='_blank' class='article-link' data-tooltip='{abstract[:200]}...'>Read More</a><br>
                         <p>{abstract}</p>
                     </li>
                 """)
@@ -248,6 +249,6 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     print(f"HTML file saved to {html_file}")
 
 # Main execution
-journals = get_journal_info()
-save_all_toc_to_xml(journals)
+#journals = get_journal_info()
+#save_all_toc_to_xml(journals)
 generate_html_from_xml()
