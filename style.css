@@ -4,6 +4,20 @@ body {
     padding: 20px;
     background: linear-gradient(135deg, #2e3440, #3b4252);
     color: #eceff4;
+    overflow-x: hidden; /* Hide horizontal scroll */
+}
+
+/* Show pointer for clickable journal headers */
+.journal-header {
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.toggle-icon {
+    margin-right: 10px;
+    color: #81a1c1;
+    font-weight: bold;
+    transition: transform 0.3s ease;
 }
 
 /* Headings */

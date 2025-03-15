@@ -1,8 +1,29 @@
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('searchInput').addEventListener('keyup', searchArticles);
     document.getElementById('journalSelect').addEventListener('change', selectJournal);
+
     searchArticles();
+    setupAccordion(); // For All Journals
 });
+
+function setupAccordion() {
+    const headers = document.querySelectorAll('.journal-header');
+    headers.forEach(header => {
+        header.addEventListener('click', function() {
+            const targetID = this.getAttribute('data-toggle');
+            const icon = this.querySelector('.toggle-icon');
+            const targetUl = document.getElementById(targetID);
+
+            if (targetUl.style.display === 'block') {
+                targetUl.style.display = 'none';
+                icon.textContent = '▲'; // or '+'
+            } else {
+                targetUl.style.display = 'block';
+                icon.textContent = '▼'; // or '–'
+            }
+        });
+    });
+}
 
 function selectJournal() {
     const selected = document.getElementById('journalSelect').value;
@@ -18,7 +39,7 @@ function searchArticles() {
         const title = article.getAttribute('data-title');
         const abstract = article.getAttribute('data-abstract');
         const authors = article.getAttribute('data-authors');
-        article.style.display = title.includes(input) || abstract.includes(input) || authors.includes(input) ? '' : 'none';
+        article.style.display = (title.includes(input) || abstract.includes(input) || authors.includes(input)) ? '' : 'none';
     });
 }
 

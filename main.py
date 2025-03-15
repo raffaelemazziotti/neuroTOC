@@ -138,16 +138,19 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     update_date = root.attrib.get('updated', 'N/A')
 
     dropdown_options = '<option value="All_Journals">All Journals</option>'
-    all_journals_html = ""
+    all_journals_html = """<h2>All Journals</h2>"""
     individual_journals_html = ""
 
     for journal in root.findall('Journal'):
         journal_name = journal.get('name')
         journal_id = journal_name.replace(" ", "_").lower()
+
         dropdown_options += f'<option value="{journal_id}">{journal_name}</option>'
 
+        # Build article list for this journal
+        articles = journal.findall('Article')
         articles_html = ""
-        for article in journal.findall('Article'):
+        for article in articles:
             title = article.find('Title').text
             doi = article.find('DOI').text
             authors = article.find('Authors').text
@@ -156,9 +159,9 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
             abstract = article.find('Abstract').text or "No preview available"
 
             articles_html += f"""
-                <li class='article-item' 
-                    data-title='{title.lower()}' 
-                    data-abstract='{abstract.lower()}' 
+                <li class='article-item'
+                    data-title='{title.lower()}'
+                    data-abstract='{abstract.lower()}'
                     data-authors='{authors}'>
                     <strong>{title}</strong> ({art_type})<br>
                     <em>Authors:</em> {authors}<br>
@@ -168,26 +171,40 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                 </li>
             """
 
-        all_journals_html += f"<h2>{journal_name}</h2><ul>{articles_html}</ul>"
+        # Accordion for All Journals: all open by default
+        accordion_id = "acc_" + journal_id
+        all_journals_html += f"""
+            <div class="accordion-item">
+                <h3 class="journal-header" data-toggle="{accordion_id}">
+                    <span class="toggle-icon">▼</span> {journal_name}
+                </h3>
+                <ul id="{accordion_id}" style="display: block;">
+                    {articles_html}
+                </ul>
+            </div>
+        """
+
+        # Journal sections for individual dropdown usage
         individual_journals_html += f'<div id="{journal_id}" class="journal-content" style="display:none;"><ul>{articles_html}</ul></div>'
 
     html_content = f"""
     <html>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Neuro TOC</title>
+        <title>Journal TOC</title>
         <link rel="stylesheet" type="text/css" href="style.css">
         <script src="script.js" defer></script>
     </head>
     <body>
         <h1>Table of Contents (Updated: {update_date})</h1>
+
         <input type="text" id="searchInput" placeholder="Search for articles...">
+
         <div class="custom-select">
             <select id="journalSelect">
-            {dropdown_options}
+                {dropdown_options}
             </select>
         </div>
-        
 
         <div id="All_Journals" class="journal-content" style="display:block;">
             {all_journals_html}
@@ -202,6 +219,10 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
 
     with open(html_file, 'w', encoding='utf-8') as file:
         file.write(html_content)
+
+    print(f"HTML file saved to {html_file}")
+
+
 
 
 # Main execution
