@@ -133,30 +133,43 @@ def replace_ignore_case(text, old, new):
 
 
 def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.html"):
+    import xml.etree.ElementTree as ET
+    from datetime import datetime
+
+    # Parse the XML
     tree = ET.parse(xml_file)
     root = tree.getroot()
+
+    # Grab update date from the root (optional)
     update_date = root.attrib.get('updated', 'N/A')
 
+    # Build dropdown options and HTML for journals
     dropdown_options = '<option value="All_Journals">All Journals</option>'
-    all_journals_html = """<h2>All Journals</h2>"""
+    all_journals_html = "<h2>All Journals</h2>"
     individual_journals_html = ""
 
+    # Loop over each <Journal> in the XML
     for journal in root.findall('Journal'):
         journal_name = journal.get('name')
         journal_id = journal_name.replace(" ", "_").lower()
-
         dropdown_options += f'<option value="{journal_id}">{journal_name}</option>'
 
-        # Build article list for this journal
-        articles = journal.findall('Article')
+        # Build article HTML for each article in the journal
         articles_html = ""
-        for article in articles:
-            title = article.find('Title').text
-            doi = article.find('DOI').text
-            authors = article.find('Authors').text
-            pub_date = article.find('PublicationDate').text
-            art_type = article.find('Type').text
-            abstract = article.find('Abstract').text or "No preview available"
+        for article in journal.findall('Article'):
+            title_elem = article.find('Title')
+            doi_elem = article.find('DOI')
+            authors_elem = article.find('Authors')
+            date_elem = article.find('PublicationDate')
+            type_elem = article.find('Type')
+            abstract_elem = article.find('Abstract')
+
+            title = title_elem.text if title_elem is not None else "N/A"
+            doi = doi_elem.text if doi_elem is not None else "#"
+            authors = authors_elem.text if authors_elem is not None else "N/A"
+            pub_date = date_elem.text if date_elem is not None else "N/A"
+            art_type = type_elem.text if type_elem is not None else "N/A"
+            abstract = abstract_elem.text if abstract_elem is not None else "No preview available"
 
             articles_html += f"""
                 <li class='article-item'
@@ -171,7 +184,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                 </li>
             """
 
-        # Accordion for All Journals: all open by default
+        # Accordion for "All Journals" – open by default
         accordion_id = "acc_" + journal_id
         all_journals_html += f"""
             <div class="accordion-item">
@@ -184,9 +197,14 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
             </div>
         """
 
-        # Journal sections for individual dropdown usage
-        individual_journals_html += f'<div id="{journal_id}" class="journal-content" style="display:none;"><ul>{articles_html}</ul></div>'
+        # Individual Journal sections (hidden unless selected from dropdown)
+        individual_journals_html += f'''
+            <div id="{journal_id}" class="journal-content" style="display:none;">
+                <ul>{articles_html}</ul>
+            </div>
+        '''
 
+    # Build the final HTML
     html_content = f"""
     <html>
     <head>
@@ -217,16 +235,17 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     </html>
     """
 
-    with open(html_file, 'w', encoding='utf-8') as file:
-        file.write(html_content)
+    with open(html_file, 'w', encoding='utf-8') as f:
+        f.write(html_content)
 
     print(f"HTML file saved to {html_file}")
 
 
 
 
+
 # Main execution
-#journals = get_journal_info()
-#save_dataframe_to_html(journals)
-#save_all_toc_to_xml(journals)
+journals = get_journal_info()
+save_dataframe_to_html(journals)
+save_all_toc_to_xml(journals)
 generate_html_from_xml()

@@ -7,19 +7,6 @@ body {
     overflow-x: hidden; /* Hide horizontal scroll */
 }
 
-/* Show pointer for clickable journal headers */
-.journal-header {
-    cursor: pointer;
-    margin-bottom: 10px;
-}
-
-.toggle-icon {
-    margin-right: 10px;
-    color: #81a1c1;
-    font-weight: bold;
-    transition: transform 0.3s ease;
-}
-
 /* Headings */
 h1 {
     text-align: center;
@@ -32,13 +19,13 @@ h2 {
     color: #81a1c1;
 }
 
-/* Input and Custom Dropdown Container */
+/* Search and Dropdown */
 input[type="text"], .custom-select {
     width: 100%;
     margin-bottom: 20px;
 }
 
-/* Search Bar */
+/* Search Input */
 input[type="text"] {
     padding: 15px;
     border: 1px solid transparent;
@@ -49,34 +36,29 @@ input[type="text"] {
     font-size: 16px;
     transition: 0.3s ease;
 }
-
 input[type="text"]:focus {
     background: rgba(255,255,255,0.2);
     border: 1px solid #88c0d0;
-    box-shadow: 0 0 10px rgba(136, 192, 208, 0.5);
+    box-shadow: 0 0 10px rgba(136,192,208,0.5);
 }
 
-/* Custom Dropdown Wrapper */
+/* Custom Dropdown */
 .custom-select {
     position: relative;
     display: inline-block;
     background: rgba(255,255,255,0.1);
-    border: 1px solid transparent;
     border-radius: 8px;
-    color: #eceff4;
-    font-size: 16px;
     transition: 0.3s ease;
 }
 
 .custom-select:hover {
-    box-shadow: 0 0 10px rgba(136, 192, 208, 0.5);
+    box-shadow: 0 0 10px rgba(136,192,208,0.5);
 }
 
 .custom-select:focus-within {
     border: 1px solid #88c0d0;
 }
 
-/* Actual Select Element */
 .custom-select select {
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -92,7 +74,6 @@ input[type="text"]:focus {
     cursor: pointer;
 }
 
-/* Dropdown Arrow */
 .custom-select::after {
     content: "▼";
     position: absolute;
@@ -108,25 +89,55 @@ input[type="text"]:focus {
     transform: translateY(-50%) rotate(180deg);
 }
 
-/* Articles Container */
+/* Journal Content */
+.journal-content {
+    margin-top: 10px;
+    padding: 20px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+}
+
+/* Accordion Items */
+.accordion-item {
+    margin-bottom: 20px;
+}
+
+/* Clickable Journal Header for Accordion */
+.journal-header {
+    display: block;
+    cursor: pointer;
+    margin-bottom: 10px;
+    padding: 10px;
+    user-select: none;
+    font-size: 18px;
+    color: #81a1c1;
+}
+
+.toggle-icon {
+    margin-right: 10px;
+    color: #81a1c1;
+    font-weight: bold;
+    transition: transform 0.3s ease;
+}
+
+/* Article List */
 ul {
     list-style-type: none;
     padding: 0;
 }
 
-/* Article Cards (Glassmorphic) */
-li {
-    background: rgba(255, 255, 255, 0.05);
+/* Article Cards */
+li.article-item {
+    background: rgba(255,255,255,0.05);
     padding: 20px;
     margin-bottom: 15px;
     border-radius: 12px;
     backdrop-filter: blur(10px);
     transition: transform 0.3s ease, background 0.3s ease;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.2);
 }
-
-li:hover {
+li.article-item:hover {
     transform: translateY(-5px);
     background: rgba(255,255,255,0.1);
 }
@@ -138,20 +149,11 @@ a {
     font-weight: bold;
     transition: color 0.3s ease;
 }
-
 a:hover {
     color: #8fbcbb;
 }
 
-/* Journal Sections */
-.journal-content {
-    margin-top: 10px;
-    padding: 20px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 8px;
-}
-
-/* Fancy Floating Home Button (Blue Themed) */
+/* Floating Home Button (Blue & Centered) */
 .home-button {
     position: fixed;
     bottom: 30px;
@@ -163,7 +165,7 @@ a:hover {
     color: #fff;
     border: none;
     border-radius: 50%;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.4);
     cursor: pointer;
     transition: transform 0.3s ease, background 0.3s ease;
     display: flex;
@@ -172,33 +174,24 @@ a:hover {
     font-size: 28px;
     z-index: 1000;
 }
-
 .home-button:hover {
     transform: translateX(-50%) scale(1.1);
     background: linear-gradient(145deg, #81a1c1, #88c0d0);
 }
 
-/* Responsive for Mobile */
+/* Responsive */
 @media screen and (max-width: 600px) {
     input[type="text"], .custom-select select {
         font-size: 14px;
         padding: 12px;
     }
-
-    body {
-        overflow-x: hidden;
-    }
-
     .home-button {
         width: 50px;
         height: 50px;
         font-size: 24px;
         bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
     }
-
-    li {
+    li.article-item {
         padding: 15px;
     }
 }
