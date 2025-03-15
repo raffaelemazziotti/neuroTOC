@@ -1,16 +1,19 @@
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
-    margin: 20px;
+    margin: 10px;
+    padding: 0;
 }
 
 h1 {
     text-align: center;
+    font-size: 1.5em;
     color: #333;
 }
 
-h2 {
+h2, h3 {
     color: #4CAF50;
+    padding-left: 5px;
 }
 
 ul {
@@ -20,8 +23,8 @@ ul {
 
 li, p.article-item {
     background: #fff;
-    padding: 15px;
-    margin: 10px 0;
+    padding: 12px;
+    margin: 8px 0;
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
@@ -29,56 +32,14 @@ li, p.article-item {
 a {
     color: #2196F3;
     text-decoration: none;
-    position: relative;
 }
 
-a:hover::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    left: 0;
-    top: 100%;
-    padding: 10px;
-    background: #333;
-    color: #fff;
-    border-radius: 4px;
-    white-space: normal;
-    width: 300px;
-    z-index: 100;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-}
-
-.tab {
-    overflow: hidden;
-    border-bottom: 1px solid #ccc;
-}
-
-.tab button {
-    background-color: inherit;
-    border: none;
-    outline: none;
-    cursor: pointer;
-    padding: 14px 16px;
-    transition: background-color 0.3s;
-    font-size: 16px;
-}
-
-.tab button:hover {
-    background-color: #ddd;
-}
-
-.tab button.active {
-    background-color: #4CAF50;
-    color: white;
-}
-
-.tabcontent {
-    display: none;
-    padding: 20px;
+#journalSelect {
+    width: 100%;
+    padding: 12px;
     border: 1px solid #ccc;
-    border-top: none;
-    background-color: #fff;
-    margin-top: -1px;
-    border-radius: 0 0 8px 8px;
+    border-radius: 8px;
+    margin-bottom: 20px;
 }
 
 #searchInput {
@@ -87,4 +48,42 @@ a:hover::after {
     margin-bottom: 20px;
     border: 1px solid #ccc;
     border-radius: 8px;
+}
+
+.tooltip {
+    position: absolute;
+    display: none;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 10px;
+    border-radius: 6px;
+    max-width: 90%;
+    font-size: 12px;
+    z-index: 1000;
+    box-shadow: 0px 2px 5px rgba(0,0,0,0.5);
+}
+
+.home-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    font-size: 18px;
+}
+
+.home-button:hover {
+    background-color: #45a049;
+}
+
+@media screen and (max-width: 600px) {
+    .home-button {
+        padding: 12px;
+        font-size: 16px;
+    }
 }

@@ -64,7 +64,7 @@ def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
     root = ET.Element("JournalsTOC", updated=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
     for _, journal in journals.iterrows():
-        print()
+        print(f"Downloading TOC from: {journal['Journal Name']}")
         journal_elem = ET.SubElement(root, "Journal", name=journal['Journal Name'], issn=journal['ISSN'],
                                      updated=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
@@ -96,6 +96,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     html_content = [
         '<html>',
         '<head>',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
         '<title>Journal TOC</title>',
         '<link rel="stylesheet" type="text/css" href="style.css">',
         '<script>',
@@ -124,6 +125,13 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                     tooltip.style.display = "none";
                 }
             });
+
+            document.getElementById('journalSelect').addEventListener('change', function () {
+                const selectedJournal = this.value;
+                document.querySelectorAll('.journal-content').forEach((section) => {
+                    section.style.display = section.id === selectedJournal || selectedJournal === 'All_Journals' ? 'block' : 'none';
+                });
+            });
         });
 
         function searchArticles() {
@@ -137,18 +145,8 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
             }
         }
 
-        function openTab(evt, tabName) {
-            let i, tabcontent, tablinks;
-            tabcontent = document.getElementsByClassName("tabcontent");
-            for (i = 0; i < tabcontent.length; i++) {
-                tabcontent[i].style.display = "none";
-            }
-            tablinks = document.getElementsByClassName("tablinks");
-            for (i = 0; i < tablinks.length; i++) {
-                tablinks[i].className = tablinks[i].className.replace(" active", "");
-            }
-            document.getElementById(tabName).style.display = "block";
-            evt.currentTarget.className += " active";
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         """,
         '</script>',
@@ -157,19 +155,21 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         '<div id="tooltip" class="tooltip"></div>',
         f'<h1>Table of Contents (Updated: {update_date})</h1>',
         '<input type="text" id="searchInput" onkeyup="searchArticles()" placeholder="Search for articles...">',
-        '<div class="tab">'
+        '<select id="journalSelect">',
+        '<option value="All_Journals">All Journals</option>'
     ]
 
-    html_content.append('<button class="tablinks" onclick="openTab(event, \'All_Journals\')">All Journals</button>')
-
     for journal in root.findall('Journal'):
-        journal_name = journal.get('name').replace(" ", "_")
-        html_content.append(f'<button class="tablinks" onclick="openTab(event, \'{journal_name}\')">{journal.get("name")}</button>')
+        journal_id = journal.get('name').replace(" ", "_").replace(":", "").replace("/", "").replace("-", "_")
+        html_content.append(f'<option value="{journal_id}">{journal.get("name")}</option>')
 
-    html_content.append('</div>')
+    html_content.append('</select>')
 
-    # All Journals Tab with Journal Grouping
-    html_content.append('<div id="All_Journals" class="tabcontent" style="display:block;">')
+    # Floating Home Button
+    html_content.append('<button onclick="scrollToTop()" class="home-button">⬆️ Home</button>')
+
+    # All Journals Section
+    html_content.append('<div id="All_Journals" class="journal-content" style="display:block;">')
     html_content.append('<h2>All Journals</h2>')
 
     for journal in root.findall('Journal'):
@@ -182,42 +182,58 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
             for article in articles:
                 title = article.find('Title').text
                 doi = article.find('DOI').text
+                authors = article.find('Authors').text
+                pub_date = article.find('PublicationDate').text
+                art_type = article.find('Type').text
                 abstract = article.find('Abstract').text or "No preview available"
-                abstract = replace_ignore_case(abstract, 'abstract', 'Abstract: ')
-                preview = abstract[:500] + "..." if len(abstract) > 500 else abstract
+                preview = abstract[:200] + "..." if len(abstract) > 200 else abstract
 
-                html_content.append(f"<li class='article-item'><a href='{doi}' target='_blank' class='article-link' data-tooltip='{preview}'>{title}</a></li>")
+                html_content.append(f"""
+                    <li class='article-item'>
+                        <strong>{title}</strong> ({art_type})<br>
+                        <em>Authors:</em> {authors}<br>
+                        <em>Published:</em> {pub_date}<br>
+                        <a href='{doi}' target='_blank' class='article-link' data-tooltip='{preview}'>Read More</a><br>
+                        <p>{abstract}</p>
+                    </li>
+                """)
             html_content.append('</ul>')
         else:
             html_content.append('<p>No articles found.</p>')
 
     html_content.append('</div>')
 
-    # Individual Journal Tabs
+    # Individual Journal Sections
     for journal in root.findall('Journal'):
         journal_name = journal.get('name')
-        journal_id = journal_name.replace(" ", "_")
+        journal_id = journal_name.replace(" ", "_").replace(":", "").replace("/", "").replace("-", "_")
         updated_date = journal.get('updated')
 
-        html_content.append(f'<div id="{journal_id}" class="tabcontent">')
+        html_content.append(f'<div id="{journal_id}" class="journal-content" style="display:none;">')
         html_content.append(f'<h2>{journal_name}</h2>')
         html_content.append(f'<p>Last Updated: {updated_date}</p>')
-        articles = journal.findall('Article')
 
+        articles = journal.findall('Article')
         if articles:
             html_content.append('<ul>')
             for article in articles:
                 title = article.find('Title').text
-                pub_date = article.find('PublicationDate').text
-                authors = article.find('Authors').text
                 doi = article.find('DOI').text
+                authors = article.find('Authors').text
+                pub_date = article.find('PublicationDate').text
+                art_type = article.find('Type').text
                 abstract = article.find('Abstract').text or "No preview available"
-                preview = abstract[:500] + "..." if len(abstract) > 500 else abstract
+                preview = abstract[:200] + "..." if len(abstract) > 200 else abstract
 
-                html_content.append(f"<li class='article-item'><strong>{title}</strong> "
-                                    f"({pub_date})<br>"
-                                    f"Authors: {authors}<br>"
-                                    f"<a href='{doi}' target='_blank' class='article-link' data-tooltip='{preview}'>Read More</a></li>")
+                html_content.append(f"""
+                    <li class='article-item'>
+                        <strong>{title}</strong> ({art_type})<br>
+                        <em>Authors:</em> {authors}<br>
+                        <em>Published:</em> {pub_date}<br>
+                        <a href='{doi}' target='_blank' class='article-link' data-tooltip='{preview}'>Read More</a><br>
+                        <p>{abstract}</p>
+                    </li>
+                """)
             html_content.append('</ul>')
         else:
             html_content.append('<p>No articles found.</p>')
@@ -232,8 +248,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     print(f"HTML file saved to {html_file}")
 
 
-
 # Main execution
-journals = get_journal_info()
-save_all_toc_to_xml(journals)
+#journals = get_journal_info()
+#save_all_toc_to_xml(journals)
 generate_html_from_xml()
