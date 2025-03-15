@@ -9,9 +9,8 @@ document.addEventListener("DOMContentLoaded", () => {
 function setupAccordion() {
     const headers = document.querySelectorAll('.journal-header');
     headers.forEach(header => {
-        // Listen for both click + touchstart
+        // Only use "click", removing "touchstart"
         header.addEventListener('click', toggleAccordion);
-        header.addEventListener('touchstart', toggleAccordion, { passive: true });
     });
 }
 
@@ -23,10 +22,10 @@ function toggleAccordion(e) {
 
     if (targetUl.style.display === 'block') {
         targetUl.style.display = 'none';
-        icon.textContent = '▲'; // Collapsed
+        icon.textContent = '▲';
     } else {
         targetUl.style.display = 'block';
-        icon.textContent = '▼'; // Expanded
+        icon.textContent = '▼';
     }
 }
 
@@ -40,7 +39,6 @@ function selectJournal() {
 function searchArticles() {
     const input = document.getElementById('searchInput').value.toLowerCase().trim();
     const articles = document.querySelectorAll('.article-item');
-
     articles.forEach(article => {
         const title = article.getAttribute('data-title');
         const abstract = article.getAttribute('data-abstract');
@@ -52,7 +50,7 @@ function searchArticles() {
     });
 }
 
-// Attempt to go to real top, even on mobile
+// Force scrolling to the absolute top (works on mobile + desktop)
 function scrollToTop() {
     window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
     setTimeout(() => {
