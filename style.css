@@ -1,76 +1,184 @@
+/* Global Body & Background */
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-    margin: 0;
-    padding: 0 10px;
-    overflow-x: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 20px;
+    background: linear-gradient(135deg, #2e3440, #3b4252);
+    color: #eceff4;
 }
 
+/* Headings */
 h1 {
     text-align: center;
-    font-size: 2em;
-    color: #333;
-    margin: 20px 0;
+    color: #88c0d0;
+    margin-bottom: 30px;
 }
 
+h2 {
+    margin-top: 30px;
+    color: #81a1c1;
+}
+
+/* Input and Custom Dropdown Container */
+input[type="text"], .custom-select {
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+/* Search Bar */
+input[type="text"] {
+    padding: 15px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    outline: none;
+    background: rgba(255,255,255,0.1);
+    color: #eceff4;
+    font-size: 16px;
+    transition: 0.3s ease;
+}
+
+input[type="text"]:focus {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid #88c0d0;
+    box-shadow: 0 0 10px rgba(136, 192, 208, 0.5);
+}
+
+/* Custom Dropdown Wrapper */
+.custom-select {
+    position: relative;
+    display: inline-block;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: #eceff4;
+    font-size: 16px;
+    transition: 0.3s ease;
+}
+
+.custom-select:hover {
+    box-shadow: 0 0 10px rgba(136, 192, 208, 0.5);
+}
+
+.custom-select:focus-within {
+    border: 1px solid #88c0d0;
+}
+
+/* Actual Select Element */
+.custom-select select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 100%;
+    padding: 15px;
+    border: none;
+    outline: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #eceff4;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+/* Dropdown Arrow */
+.custom-select::after {
+    content: "▼";
+    position: absolute;
+    top: 50%;
+    right: 18px;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: #eceff4;
+    transition: transform 0.3s ease;
+}
+
+.custom-select:focus-within::after {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+/* Articles Container */
 ul {
     list-style-type: none;
     padding: 0;
 }
 
-li, p.article-item {
-    background: #fff;
-    padding: 15px;
-    margin: 10px 0;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+/* Article Cards (Glassmorphic) */
+li {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    margin-bottom: 15px;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    transition: transform 0.3s ease, background 0.3s ease;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+li:hover {
+    transform: translateY(-5px);
+    background: rgba(255,255,255,0.1);
+}
+
+/* Links */
 a {
-    color: #2196F3;
+    color: #88c0d0;
     text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s ease;
 }
 
-#journalSelect, #searchInput {
-    width: 100%;
-    padding: 14px;
-    border: 1px solid #ccc;
+a:hover {
+    color: #8fbcbb;
+}
+
+/* Journal Sections */
+.journal-content {
+    margin-top: 10px;
+    padding: 20px;
+    background: rgba(255,255,255,0.03);
     border-radius: 8px;
-    margin-bottom: 20px;
-    font-size: 16px;
 }
 
-.tooltip {
-    position: absolute;
-    display: none;
-    background: rgba(0, 0, 0, 0.8);
+/* Fancy Floating Home Button (Blue Themed) */
+.home-button {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(145deg, #5e81ac, #81a1c1);
     color: #fff;
-    padding: 10px;
-    border-radius: 6px;
-    max-width: 90%;
-    font-size: 14px;
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    transition: transform 0.3s ease, background 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
     z-index: 1000;
 }
 
-.home-button {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 16px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    z-index: 9999;
-    display: none;
-}
-
-.home-button.show {
-    display: block;
-}
-
 .home-button:hover {
-    background-color: #45a049;
     transform: scale(1.1);
+    background: linear-gradient(145deg, #81a1c1, #88c0d0);
+}
+
+/* Responsive for Mobile */
+@media screen and (max-width: 600px) {
+    input[type="text"], .custom-select select {
+        font-size: 14px;
+        padding: 12px;
+    }
+
+    .home-button {
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+        bottom: 20px;
+        right: 20px;
+    }
+
+    li {
+        padding: 15px;
+    }
 }

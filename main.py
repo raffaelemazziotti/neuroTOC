@@ -131,173 +131,81 @@ def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
 def replace_ignore_case(text, old, new):
     return re.sub(re.escape(old), new, text, flags=re.IGNORECASE)
 
+
 def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.html"):
     tree = ET.parse(xml_file)
     root = tree.getroot()
     update_date = root.attrib.get('updated', 'N/A')
 
-    html_content = [
-        '<html>',
-        '<head>',
-        '<meta name="viewport" content="width=device-width, initial-scale=1">',
-        '<title>Journal TOC</title>',
-        '<link rel="stylesheet" type="text/css" href="style.css">',
-        '<script>',
-        """
-        document.addEventListener("DOMContentLoaded", () => {
-            const tooltip = document.getElementById("tooltip");
-            const homeButton = document.querySelector(".home-button");
-
-            document.body.addEventListener("mouseover", function (e) {
-                if (e.target.classList.contains("article-link")) {
-                    tooltip.innerHTML = e.target.getAttribute("data-tooltip");
-                    tooltip.style.display = "block";
-                    tooltip.style.top = (e.pageY + 10) + "px";
-                    tooltip.style.left = (e.pageX + 10) + "px";
-                }
-            });
-
-            document.body.addEventListener("mousemove", function (e) {
-                if (tooltip.style.display === "block") {
-                    tooltip.style.top = (e.pageY + 10) + "px";
-                    tooltip.style.left = (e.pageX + 10) + "px";
-                }
-            });
-
-            document.body.addEventListener("mouseout", function (e) {
-                if (e.target.classList.contains("article-link")) {
-                    tooltip.style.display = "none";
-                }
-            });
-
-            document.getElementById('journalSelect').addEventListener('change', function () {
-                const selectedJournal = this.value;
-                document.querySelectorAll('.journal-content').forEach((section) => {
-                    section.style.display = section.id === selectedJournal || selectedJournal === 'All_Journals' ? 'block' : 'none';
-                });
-            });
-
-            window.addEventListener('scroll', () => {
-                homeButton.classList.toggle('show', window.scrollY > 300);
-            });
-        });
-
-        function searchArticles() {
-            const input = document.getElementById('searchInput');
-            const filter = input.value.toLowerCase();
-            const visibleSection = document.querySelector('.journal-content[style="display: block;"]');
-            const articles = visibleSection.querySelectorAll('.article-item');
-
-            articles.forEach(article => {
-                const text = article.textContent || article.innerText;
-                article.style.display = text.toLowerCase().includes(filter) ? '' : 'none';
-            });
-        }
-
-        function scrollToTop() {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-        """,
-        '</script>',
-        '</head>',
-        '<body>',
-        '<div id="tooltip" class="tooltip"></div>',
-        f'<h1>Table of Contents (Updated: {update_date})</h1>',
-        '<input type="text" id="searchInput" onkeyup="searchArticles()" placeholder="Search for articles...">',
-        '<select id="journalSelect">',
-        '<option value="All_Journals">All Journals</option>'
-    ]
-
-    # Correct ID generation and dropdown options
-    for journal in root.findall('Journal'):
-        journal_id = journal.get('name').lower().replace(" ", "_").replace(":", "").replace("/", "").replace("-", "_")
-        html_content.append(f'<option value="{journal_id}">{journal.get("name")}</option>')
-
-    html_content.append('</select>')
-
-    # Floating Home Button
-    html_content.append('<button onclick="scrollToTop()" class="home-button">⬆️</button>')
-
-    # All Journals Section
-    html_content.append('<div id="All_Journals" class="journal-content" style="display:block;">')
-    html_content.append('<h2>All Journals</h2>')
+    dropdown_options = '<option value="All_Journals">All Journals</option>'
+    all_journals_html = ""
+    individual_journals_html = ""
 
     for journal in root.findall('Journal'):
         journal_name = journal.get('name')
-        html_content.append(f'<h3>{journal_name}</h3>')
+        journal_id = journal_name.replace(" ", "_").lower()
+        dropdown_options += f'<option value="{journal_id}">{journal_name}</option>'
 
-        articles = journal.findall('Article')
-        if articles:
-            html_content.append('<ul>')
-            for article in articles:
-                title = article.find('Title').text
-                doi = article.find('DOI').text
-                authors = article.find('Authors').text
-                pub_date = article.find('PublicationDate').text
-                art_type = article.find('Type').text
-                abstract = article.find('Abstract').text or "No preview available"
+        articles_html = ""
+        for article in journal.findall('Article'):
+            title = article.find('Title').text
+            doi = article.find('DOI').text
+            authors = article.find('Authors').text
+            pub_date = article.find('PublicationDate').text
+            art_type = article.find('Type').text
+            abstract = article.find('Abstract').text or "No preview available"
 
-                html_content.append(f"""
-                    <li class='article-item'>
-                        <strong>{title}</strong> ({art_type})<br>
-                        <em>Authors:</em> {authors}<br>
-                        <em>Published:</em> {pub_date}<br>
-                        <a href='{doi}' target='_blank' class='article-link' data-tooltip='{abstract[:200]}...'>Read More</a><br>
-                        <p>{abstract}</p>
-                    </li>
-                """)
-            html_content.append('</ul>')
-        else:
-            html_content.append('<p>No articles found.</p>')
+            articles_html += f"""
+                <li class='article-item' 
+                    data-title='{title.lower()}' 
+                    data-abstract='{abstract.lower()}' 
+                    data-authors='{authors}'>
+                    <strong>{title}</strong> ({art_type})<br>
+                    <em>Authors:</em> {authors}<br>
+                    <em>Published:</em> {pub_date}<br>
+                    <a href='{doi}' target='_blank'>Read More</a><br>
+                    <p>{abstract}</p>
+                </li>
+            """
 
-    html_content.append('</div>')
+        all_journals_html += f"<h2>{journal_name}</h2><ul>{articles_html}</ul>"
+        individual_journals_html += f'<div id="{journal_id}" class="journal-content" style="display:none;"><ul>{articles_html}</ul></div>'
 
-    # Individual Journal Sections
-    for journal in root.findall('Journal'):
-        journal_name = journal.get('name')
-        journal_id = journal_name.lower().replace(" ", "_").replace(":", "").replace("/", "").replace("-", "_")
-        updated_date = journal.get('updated')
+    html_content = f"""
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Journal TOC</title>
+        <link rel="stylesheet" type="text/css" href="style.css">
+        <script src="script.js" defer></script>
+    </head>
+    <body>
+        <h1>Table of Contents (Updated: {update_date})</h1>
+        <input type="text" id="searchInput" placeholder="Search for articles...">
+        <div class="custom-select">
+            <select id="journalSelect">
+            {dropdown_options}
+            </select>
+        </div>
+        
 
-        html_content.append(f'<div id="{journal_id}" class="journal-content" style="display:none;">')
-        html_content.append(f'<h2>{journal_name}</h2>')
-        html_content.append(f'<p>Last Updated: {updated_date}</p>')
+        <div id="All_Journals" class="journal-content" style="display:block;">
+            {all_journals_html}
+        </div>
 
-        articles = journal.findall('Article')
-        if articles:
-            html_content.append('<ul>')
-            for article in articles:
-                title = article.find('Title').text
-                doi = article.find('DOI').text
-                authors = article.find('Authors').text
-                pub_date = article.find('PublicationDate').text
-                art_type = article.find('Type').text
-                abstract = article.find('Abstract').text or "No preview available"
+        {individual_journals_html}
 
-                html_content.append(f"""
-                    <li class='article-item'>
-                        <strong>{title}</strong> ({art_type})<br>
-                        <em>Authors:</em> {authors}<br>
-                        <em>Published:</em> {pub_date}<br>
-                        <a href='{doi}' target='_blank' class='article-link' data-tooltip='{abstract[:200]}...'>Read More</a><br>
-                        <p>{abstract}</p>
-                    </li>
-                """)
-            html_content.append('</ul>')
-        else:
-            html_content.append('<p>No articles found.</p>')
-
-        html_content.append('</div>')
-
-    html_content.append('</body></html>')
+        <button onclick="scrollToTop()" class="home-button">↑</button>
+    </body>
+    </html>
+    """
 
     with open(html_file, 'w', encoding='utf-8') as file:
-        file.write('\n'.join(html_content))
-
-    print(f"HTML file saved to {html_file}")
+        file.write(html_content)
 
 
 # Main execution
-journals = get_journal_info()
-save_dataframe_to_html(journals)
-save_all_toc_to_xml(journals)
+#journals = get_journal_info()
+#save_dataframe_to_html(journals)
+#save_all_toc_to_xml(journals)
 generate_html_from_xml()
