@@ -85,9 +85,9 @@ def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
     print(f"TOC with update dates saved to {filename}")
 
 
-
 def replace_ignore_case(text, old, new):
     return re.sub(re.escape(old), new, text, flags=re.IGNORECASE)
+
 def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.html"):
     tree = ET.parse(xml_file)
     root = tree.getroot()
@@ -168,19 +168,28 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
 
     html_content.append('</div>')
 
-    # All Journals Tab
+    # All Journals Tab with Journal Grouping
     html_content.append('<div id="All_Journals" class="tabcontent" style="display:block;">')
     html_content.append('<h2>All Journals</h2>')
 
-    # TODO change the tooltip to include the info of the article
     for journal in root.findall('Journal'):
-        for article in journal.findall('Article'):
-            title = article.find('Title').text
-            doi = article.find('DOI').text
-            abstract = article.find('Abstract').text or "No preview available"
-            abstract = replace_ignore_case(abstract,'abstract','Abstract: ')
-            preview = abstract[:500] + "..." if len(abstract) > 500 else abstract
-            html_content.append(f"<p class='article-item'><a href='{doi}' target='_blank' class='article-link' data-tooltip='{preview}'>{title}</a></p>")
+        journal_name = journal.get('name')
+        html_content.append(f'<h3>{journal_name}</h3>')
+
+        articles = journal.findall('Article')
+        if articles:
+            html_content.append('<ul>')
+            for article in articles:
+                title = article.find('Title').text
+                doi = article.find('DOI').text
+                abstract = article.find('Abstract').text or "No preview available"
+                abstract = replace_ignore_case(abstract, 'abstract', 'Abstract: ')
+                preview = abstract[:500] + "..." if len(abstract) > 500 else abstract
+
+                html_content.append(f"<li class='article-item'><a href='{doi}' target='_blank' class='article-link' data-tooltip='{preview}'>{title}</a></li>")
+            html_content.append('</ul>')
+        else:
+            html_content.append('<p>No articles found.</p>')
 
     html_content.append('</div>')
 
@@ -203,7 +212,6 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                 authors = article.find('Authors').text
                 doi = article.find('DOI').text
                 abstract = article.find('Abstract').text or "No preview available"
-                abstract = replace_ignore_case(abstract, 'abstract', 'Abstract: ')
                 preview = abstract[:500] + "..." if len(abstract) > 500 else abstract
 
                 html_content.append(f"<li class='article-item'><strong>{title}</strong> "
@@ -224,7 +232,8 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     print(f"HTML file saved to {html_file}")
 
 
+
 # Main execution
-journals = get_journal_info()
-save_all_toc_to_xml(journals)
+#journals = get_journal_info()
+#save_all_toc_to_xml(journals)
 generate_html_from_xml()
