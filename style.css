@@ -1,10 +1,11 @@
 /* Global Body & Background */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0; /* no extra margin */
     padding: 20px;
     background: linear-gradient(135deg, #2e3440, #3b4252);
     color: #eceff4;
-    overflow-x: hidden; /* Hide horizontal scroll */
+    overflow-x: hidden;  /* On large screens, hide horizontal scroll */
 }
 
 /* Headings */
@@ -19,7 +20,7 @@ h2 {
     color: #81a1c1;
 }
 
-/* Search and Dropdown */
+/* Search & Dropdown Container */
 input[type="text"], .custom-select {
     width: 100%;
     margin-bottom: 20px;
@@ -50,15 +51,12 @@ input[type="text"]:focus {
     border-radius: 8px;
     transition: 0.3s ease;
 }
-
 .custom-select:hover {
     box-shadow: 0 0 10px rgba(136,192,208,0.5);
 }
-
 .custom-select:focus-within {
     border: 1px solid #88c0d0;
 }
-
 .custom-select select {
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -73,7 +71,6 @@ input[type="text"]:focus {
     font-size: 16px;
     cursor: pointer;
 }
-
 .custom-select::after {
     content: "▼";
     position: absolute;
@@ -84,25 +81,20 @@ input[type="text"]:focus {
     color: #eceff4;
     transition: transform 0.3s ease;
 }
-
 .custom-select:focus-within::after {
     transform: translateY(-50%) rotate(180deg);
 }
 
-/* Journal Content */
+/* Journal Content & Accordion */
 .journal-content {
     margin-top: 10px;
     padding: 20px;
     background: rgba(255,255,255,0.03);
     border-radius: 8px;
 }
-
-/* Accordion Items */
 .accordion-item {
     margin-bottom: 20px;
 }
-
-/* Clickable Journal Header for Accordion */
 .journal-header {
     display: block;
     cursor: pointer;
@@ -112,7 +104,6 @@ input[type="text"]:focus {
     font-size: 18px;
     color: #81a1c1;
 }
-
 .toggle-icon {
     margin-right: 10px;
     color: #81a1c1;
@@ -126,13 +117,12 @@ ul {
     padding: 0;
 }
 
-/* Article Cards */
+/* Article Cards (No heavy backdrop-filter to avoid glitch) */
 li.article-item {
     background: rgba(255,255,255,0.05);
     padding: 20px;
     margin-bottom: 15px;
     border-radius: 12px;
-    backdrop-filter: blur(10px);
     transition: transform 0.3s ease, background 0.3s ease;
     box-shadow: 0 4px 30px rgba(0,0,0,0.4);
     border: 1px solid rgba(255,255,255,0.2);
@@ -179,8 +169,11 @@ a:hover {
     background: linear-gradient(145deg, #81a1c1, #88c0d0);
 }
 
-/* Responsive */
+/* Hide horizontal scroll only on mobile to fix space issue */
 @media screen and (max-width: 600px) {
+    body {
+        overflow-x: hidden;  /* Hide horizontal scroll on phone if needed */
+    }
     input[type="text"], .custom-select select {
         font-size: 14px;
         padding: 12px;

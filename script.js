@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function setupAccordion() {
     const headers = document.querySelectorAll('.journal-header');
     headers.forEach(header => {
-        // Only use "click", removing "touchstart"
+        // Only "click" so mobile doesn't double-trigger
         header.addEventListener('click', toggleAccordion);
     });
 }
@@ -39,6 +39,7 @@ function selectJournal() {
 function searchArticles() {
     const input = document.getElementById('searchInput').value.toLowerCase().trim();
     const articles = document.querySelectorAll('.article-item');
+
     articles.forEach(article => {
         const title = article.getAttribute('data-title');
         const abstract = article.getAttribute('data-abstract');
@@ -50,7 +51,6 @@ function searchArticles() {
     });
 }
 
-// Force scrolling to the absolute top (works on mobile + desktop)
 function scrollToTop() {
     window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
     setTimeout(() => {
