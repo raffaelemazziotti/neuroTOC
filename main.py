@@ -6,6 +6,49 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import re
 
+def save_dataframe_to_html(df: pd.DataFrame, output_file: str = "journals_list.html"):
+    """Save the given DataFrame as a styled HTML table."""
+    html_table = df.to_html(index=False, border=0, classes="dataframe", justify="center")
+
+    # Write the HTML content
+    with open(output_file, "w") as html_file:
+        html_file.write(f"""
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Journal List</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; padding: 20px; background-color: #f9f9f9; }}
+                h2 {{ text-align: center; color: #4CAF50; }}
+                table.dataframe {{ 
+                    width: 100%; 
+                    border-collapse: collapse;
+                    margin-top: 20px;
+                }}
+                th, td {{ 
+                    border: 1px solid #ddd; 
+                    padding: 10px; 
+                    text-align: center;
+                }}
+                th {{
+                    background-color: #4CAF50;
+                    color: white;
+                }}
+                tr:nth-child(even) {{ background-color: #f2f2f2; }}
+                tr:hover {{ background-color: #ddd; }}
+                @media screen and (max-width: 600px) {{
+                    th, td {{ padding: 8px; font-size: 14px; }}
+                }}
+            </style>
+        </head>
+        <body>
+            <h2>📚 Journal List</h2>
+            {html_table}
+        </body>
+        </html>
+        """)
+    print(f"HTML table saved to '{output_file}'")
+
 def get_journal_info():
     # Replace with your Google Sheets URL and export it as CSV
     sheet_id = "1HIBPpTTpuznVZdr5Kf-hd6vp6iWYJQvjasnrmKv6p8w"
@@ -254,6 +297,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
 
 
 # Main execution
-#journals = get_journal_info()
-#save_all_toc_to_xml(journals)
+journals = get_journal_info()
+save_dataframe_to_html(journals)
+save_all_toc_to_xml(journals)
 generate_html_from_xml()
