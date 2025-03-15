@@ -7,6 +7,7 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             const tooltip = document.getElementById("tooltip");
+            const homeButton = document.querySelector(".home-button");
 
             document.body.addEventListener("mouseover", function (e) {
                 if (e.target.classList.contains("article-link")) {
@@ -36,6 +37,10 @@
                     section.style.display = section.id === selectedJournal || selectedJournal === 'All_Journals' ? 'block' : 'none';
                 });
             });
+
+            window.addEventListener('scroll', () => {
+                homeButton.classList.toggle('show', window.scrollY > 300);
+            });
         });
 
         function searchArticles() {
@@ -62,52 +67,52 @@
 <input type="text" id="searchInput" onkeyup="searchArticles()" placeholder="Search for articles...">
 <select id="journalSelect">
 <option value="All_Journals">All Journals</option>
-<option value="Cell">Cell</option>
-<option value="Nature">Nature</option>
-<option value="Science">Science</option>
-<option value="Nature_Reviews_Neuroscience">Nature Reviews Neuroscience</option>
-<option value="Nature_Methods">Nature Methods</option>
-<option value="Nature_Neuroscience">Nature Neuroscience</option>
-<option value="Behavioral_and_Brain_Sciences">Behavioral and Brain Sciences</option>
-<option value="Nature_Cell_Biology">Nature Cell Biology</option>
-<option value="Trends_in_Neurosciences">Trends in Neurosciences</option>
-<option value="Nature_Communications">Nature Communications</option>
-<option value="Molecular_Psychiatry">Molecular Psychiatry</option>
-<option value="Neuron">Neuron</option>
-<option value="Science_Advances">Science Advances</option>
-<option value="Annual_Review_of_Neuroscience">Annual Review of Neuroscience</option>
-<option value="Biological_Psychiatry">Biological Psychiatry</option>
-<option value="Brain">Brain</option>
-<option value="Proceedings_of_the_National_Academy_of_Sciences">Proceedings of the National Academy of Sciences</option>
-<option value="Progress_in_Neurobiology">Progress in Neurobiology</option>
-<option value="eLife">eLife</option>
-<option value="Current_Biology">Current Biology</option>
-<option value="Neuropsychopharmacology">Neuropsychopharmacology</option>
-<option value="PLOS_Biology">PLOS Biology</option>
-<option value="Cell_Reports">Cell Reports</option>
-<option value="Cellular_and_Molecular_Life_Sciences">Cellular and Molecular Life Sciences</option>
-<option value="Pain">Pain</option>
-<option value="Communications_Biology">Communications Biology</option>
-<option value="Glia">Glia</option>
-<option value="International_Journal_of_Molecular_Sciences">International Journal of Molecular Sciences</option>
-<option value="Neuroscience_Bulletin">Neuroscience Bulletin</option>
-<option value="Translational_Psychiatry">Translational Psychiatry</option>
-<option value="Molecular_Neurobiology">Molecular Neurobiology</option>
-<option value="iScience">iScience</option>
-<option value="Neuropharmacology">Neuropharmacology</option>
-<option value="Journal_of_Physiology">Journal of Physiology</option>
-<option value="Journal_of_Neuroscience">Journal of Neuroscience</option>
-<option value="Progress_in_Neuro_Psychopharmacology_and_Biological_Psychiatry">Progress in Neuro-Psychopharmacology and Biological Psychiatry</option>
-<option value="Brain_Research_Bulletin">Brain Research Bulletin</option>
-<option value="Social_Cognitive_and_Affective_Neuroscience">Social Cognitive and Affective Neuroscience</option>
-<option value="Scientific_Reports">Scientific Reports</option>
-<option value="Cortex">Cortex</option>
-<option value="European_Journal_of_Neuroscience">European Journal of Neuroscience</option>
-<option value="Physiology_&_Behavior">Physiology & Behavior</option>
-<option value="Neuroscience_Letters">Neuroscience Letters</option>
-<option value="Journal_of_Integrative_Neuroscience">Journal of Integrative Neuroscience</option>
-<option value="International_Journal_of_Neuroscience">International Journal of Neuroscience</option>
-<option value="Neurosciences_Journal">Neurosciences Journal</option>
+<option value="cell">Cell</option>
+<option value="nature">Nature</option>
+<option value="science">Science</option>
+<option value="nature_reviews_neuroscience">Nature Reviews Neuroscience</option>
+<option value="nature_methods">Nature Methods</option>
+<option value="nature_neuroscience">Nature Neuroscience</option>
+<option value="behavioral_and_brain_sciences">Behavioral and Brain Sciences</option>
+<option value="nature_cell_biology">Nature Cell Biology</option>
+<option value="trends_in_neurosciences">Trends in Neurosciences</option>
+<option value="nature_communications">Nature Communications</option>
+<option value="molecular_psychiatry">Molecular Psychiatry</option>
+<option value="neuron">Neuron</option>
+<option value="science_advances">Science Advances</option>
+<option value="annual_review_of_neuroscience">Annual Review of Neuroscience</option>
+<option value="biological_psychiatry">Biological Psychiatry</option>
+<option value="brain">Brain</option>
+<option value="proceedings_of_the_national_academy_of_sciences">Proceedings of the National Academy of Sciences</option>
+<option value="progress_in_neurobiology">Progress in Neurobiology</option>
+<option value="elife">eLife</option>
+<option value="current_biology">Current Biology</option>
+<option value="neuropsychopharmacology">Neuropsychopharmacology</option>
+<option value="plos_biology">PLOS Biology</option>
+<option value="cell_reports">Cell Reports</option>
+<option value="cellular_and_molecular_life_sciences">Cellular and Molecular Life Sciences</option>
+<option value="pain">Pain</option>
+<option value="communications_biology">Communications Biology</option>
+<option value="glia">Glia</option>
+<option value="international_journal_of_molecular_sciences">International Journal of Molecular Sciences</option>
+<option value="neuroscience_bulletin">Neuroscience Bulletin</option>
+<option value="translational_psychiatry">Translational Psychiatry</option>
+<option value="molecular_neurobiology">Molecular Neurobiology</option>
+<option value="iscience">iScience</option>
+<option value="neuropharmacology">Neuropharmacology</option>
+<option value="journal_of_physiology">Journal of Physiology</option>
+<option value="journal_of_neuroscience">Journal of Neuroscience</option>
+<option value="progress_in_neuro_psychopharmacology_and_biological_psychiatry">Progress in Neuro-Psychopharmacology and Biological Psychiatry</option>
+<option value="brain_research_bulletin">Brain Research Bulletin</option>
+<option value="social_cognitive_and_affective_neuroscience">Social Cognitive and Affective Neuroscience</option>
+<option value="scientific_reports">Scientific Reports</option>
+<option value="cortex">Cortex</option>
+<option value="european_journal_of_neuroscience">European Journal of Neuroscience</option>
+<option value="physiology_&_behavior">Physiology & Behavior</option>
+<option value="neuroscience_letters">Neuroscience Letters</option>
+<option value="journal_of_integrative_neuroscience">Journal of Integrative Neuroscience</option>
+<option value="international_journal_of_neuroscience">International Journal of Neuroscience</option>
+<option value="neurosciences_journal">Neurosciences Journal</option>
 </select>
 <button onclick="scrollToTop()" class="home-button">⬆️</button>
 <div id="All_Journals" class="journal-content" style="display:block;">
@@ -12561,7 +12566,7 @@
                 
 </ul>
 </div>
-<div id="Cell" class="journal-content" style="display:none;">
+<div id="cell" class="journal-content" style="display:none;">
 <h2>Cell</h2>
 <p>Last Updated: 2025-03-15 13:50:17</p>
 <ul>
@@ -12837,7 +12842,7 @@
                 
 </ul>
 </div>
-<div id="Nature" class="journal-content" style="display:none;">
+<div id="nature" class="journal-content" style="display:none;">
 <h2>Nature</h2>
 <p>Last Updated: 2025-03-15 13:50:19</p>
 <ul>
@@ -13113,7 +13118,7 @@
                 
 </ul>
 </div>
-<div id="Science" class="journal-content" style="display:none;">
+<div id="science" class="journal-content" style="display:none;">
 <h2>Science</h2>
 <p>Last Updated: 2025-03-15 13:50:24</p>
 <ul>
@@ -13413,7 +13418,7 @@
                 
 </ul>
 </div>
-<div id="Nature_Reviews_Neuroscience" class="journal-content" style="display:none;">
+<div id="nature_reviews_neuroscience" class="journal-content" style="display:none;">
 <h2>Nature Reviews Neuroscience</h2>
 <p>Last Updated: 2025-03-15 13:50:25</p>
 <ul>
@@ -13689,7 +13694,7 @@
                 
 </ul>
 </div>
-<div id="Nature_Methods" class="journal-content" style="display:none;">
+<div id="nature_methods" class="journal-content" style="display:none;">
 <h2>Nature Methods</h2>
 <p>Last Updated: 2025-03-15 13:50:28</p>
 <ul>
@@ -13965,7 +13970,7 @@
                 
 </ul>
 </div>
-<div id="Nature_Neuroscience" class="journal-content" style="display:none;">
+<div id="nature_neuroscience" class="journal-content" style="display:none;">
 <h2>Nature Neuroscience</h2>
 <p>Last Updated: 2025-03-15 13:50:29</p>
 <ul>
@@ -14241,7 +14246,7 @@
                 
 </ul>
 </div>
-<div id="Behavioral_and_Brain_Sciences" class="journal-content" style="display:none;">
+<div id="behavioral_and_brain_sciences" class="journal-content" style="display:none;">
 <h2>Behavioral and Brain Sciences</h2>
 <p>Last Updated: 2025-03-15 13:50:31</p>
 <ul>
@@ -14517,7 +14522,7 @@
                 
 </ul>
 </div>
-<div id="Nature_Cell_Biology" class="journal-content" style="display:none;">
+<div id="nature_cell_biology" class="journal-content" style="display:none;">
 <h2>Nature Cell Biology</h2>
 <p>Last Updated: 2025-03-15 13:50:32</p>
 <ul>
@@ -14793,7 +14798,7 @@
                 
 </ul>
 </div>
-<div id="Trends_in_Neurosciences" class="journal-content" style="display:none;">
+<div id="trends_in_neurosciences" class="journal-content" style="display:none;">
 <h2>Trends in Neurosciences</h2>
 <p>Last Updated: 2025-03-15 13:50:34</p>
 <ul>
@@ -15069,7 +15074,7 @@
                 
 </ul>
 </div>
-<div id="Nature_Communications" class="journal-content" style="display:none;">
+<div id="nature_communications" class="journal-content" style="display:none;">
 <h2>Nature Communications</h2>
 <p>Last Updated: 2025-03-15 13:50:36</p>
 <ul>
@@ -15345,7 +15350,7 @@
                 
 </ul>
 </div>
-<div id="Molecular_Psychiatry" class="journal-content" style="display:none;">
+<div id="molecular_psychiatry" class="journal-content" style="display:none;">
 <h2>Molecular Psychiatry</h2>
 <p>Last Updated: 2025-03-15 13:50:37</p>
 <ul>
@@ -15621,7 +15626,7 @@
                 
 </ul>
 </div>
-<div id="Neuron" class="journal-content" style="display:none;">
+<div id="neuron" class="journal-content" style="display:none;">
 <h2>Neuron</h2>
 <p>Last Updated: 2025-03-15 13:50:41</p>
 <ul>
@@ -15897,7 +15902,7 @@
                 
 </ul>
 </div>
-<div id="Science_Advances" class="journal-content" style="display:none;">
+<div id="science_advances" class="journal-content" style="display:none;">
 <h2>Science Advances</h2>
 <p>Last Updated: 2025-03-15 13:50:44</p>
 <ul>
@@ -16181,7 +16186,7 @@
                 
 </ul>
 </div>
-<div id="Annual_Review_of_Neuroscience" class="journal-content" style="display:none;">
+<div id="annual_review_of_neuroscience" class="journal-content" style="display:none;">
 <h2>Annual Review of Neuroscience</h2>
 <p>Last Updated: 2025-03-15 13:50:47</p>
 <ul>
@@ -16457,7 +16462,7 @@
                 
 </ul>
 </div>
-<div id="Biological_Psychiatry" class="journal-content" style="display:none;">
+<div id="biological_psychiatry" class="journal-content" style="display:none;">
 <h2>Biological Psychiatry</h2>
 <p>Last Updated: 2025-03-15 13:50:49</p>
 <ul>
@@ -16733,7 +16738,7 @@
                 
 </ul>
 </div>
-<div id="Brain" class="journal-content" style="display:none;">
+<div id="brain" class="journal-content" style="display:none;">
 <h2>Brain</h2>
 <p>Last Updated: 2025-03-15 13:50:52</p>
 <ul>
@@ -17009,7 +17014,7 @@
                 
 </ul>
 </div>
-<div id="Proceedings_of_the_National_Academy_of_Sciences" class="journal-content" style="display:none;">
+<div id="proceedings_of_the_national_academy_of_sciences" class="journal-content" style="display:none;">
 <h2>Proceedings of the National Academy of Sciences</h2>
 <p>Last Updated: 2025-03-15 13:50:54</p>
 <ul>
@@ -17292,7 +17297,7 @@
                 
 </ul>
 </div>
-<div id="Progress_in_Neurobiology" class="journal-content" style="display:none;">
+<div id="progress_in_neurobiology" class="journal-content" style="display:none;">
 <h2>Progress in Neurobiology</h2>
 <p>Last Updated: 2025-03-15 13:50:56</p>
 <ul>
@@ -17568,7 +17573,7 @@
                 
 </ul>
 </div>
-<div id="eLife" class="journal-content" style="display:none;">
+<div id="elife" class="journal-content" style="display:none;">
 <h2>eLife</h2>
 <p>Last Updated: 2025-03-15 13:50:57</p>
 <ul>
@@ -17844,7 +17849,7 @@
                 
 </ul>
 </div>
-<div id="Current_Biology" class="journal-content" style="display:none;">
+<div id="current_biology" class="journal-content" style="display:none;">
 <h2>Current Biology</h2>
 <p>Last Updated: 2025-03-15 13:50:59</p>
 <ul>
@@ -18120,7 +18125,7 @@
                 
 </ul>
 </div>
-<div id="Neuropsychopharmacology" class="journal-content" style="display:none;">
+<div id="neuropsychopharmacology" class="journal-content" style="display:none;">
 <h2>Neuropsychopharmacology</h2>
 <p>Last Updated: 2025-03-15 13:51:01</p>
 <ul>
@@ -18396,7 +18401,7 @@
                 
 </ul>
 </div>
-<div id="PLOS_Biology" class="journal-content" style="display:none;">
+<div id="plos_biology" class="journal-content" style="display:none;">
 <h2>PLOS Biology</h2>
 <p>Last Updated: 2025-03-15 13:51:03</p>
 <ul>
@@ -18672,7 +18677,7 @@
                 
 </ul>
 </div>
-<div id="Cell_Reports" class="journal-content" style="display:none;">
+<div id="cell_reports" class="journal-content" style="display:none;">
 <h2>Cell Reports</h2>
 <p>Last Updated: 2025-03-15 13:51:08</p>
 <ul>
@@ -18948,7 +18953,7 @@
                 
 </ul>
 </div>
-<div id="Cellular_and_Molecular_Life_Sciences" class="journal-content" style="display:none;">
+<div id="cellular_and_molecular_life_sciences" class="journal-content" style="display:none;">
 <h2>Cellular and Molecular Life Sciences</h2>
 <p>Last Updated: 2025-03-15 13:51:10</p>
 <ul>
@@ -19224,7 +19229,7 @@
                 
 </ul>
 </div>
-<div id="Pain" class="journal-content" style="display:none;">
+<div id="pain" class="journal-content" style="display:none;">
 <h2>Pain</h2>
 <p>Last Updated: 2025-03-15 13:51:12</p>
 <ul>
@@ -19500,7 +19505,7 @@
                 
 </ul>
 </div>
-<div id="Communications_Biology" class="journal-content" style="display:none;">
+<div id="communications_biology" class="journal-content" style="display:none;">
 <h2>Communications Biology</h2>
 <p>Last Updated: 2025-03-15 13:51:14</p>
 <ul>
@@ -19776,7 +19781,7 @@
                 
 </ul>
 </div>
-<div id="Glia" class="journal-content" style="display:none;">
+<div id="glia" class="journal-content" style="display:none;">
 <h2>Glia</h2>
 <p>Last Updated: 2025-03-15 13:51:17</p>
 <ul>
@@ -20052,7 +20057,7 @@
                 
 </ul>
 </div>
-<div id="International_Journal_of_Molecular_Sciences" class="journal-content" style="display:none;">
+<div id="international_journal_of_molecular_sciences" class="journal-content" style="display:none;">
 <h2>International Journal of Molecular Sciences</h2>
 <p>Last Updated: 2025-03-15 13:51:19</p>
 <ul>
@@ -20328,7 +20333,7 @@
                 
 </ul>
 </div>
-<div id="Neuroscience_Bulletin" class="journal-content" style="display:none;">
+<div id="neuroscience_bulletin" class="journal-content" style="display:none;">
 <h2>Neuroscience Bulletin</h2>
 <p>Last Updated: 2025-03-15 13:51:20</p>
 <ul>
@@ -20604,7 +20609,7 @@
                 
 </ul>
 </div>
-<div id="Translational_Psychiatry" class="journal-content" style="display:none;">
+<div id="translational_psychiatry" class="journal-content" style="display:none;">
 <h2>Translational Psychiatry</h2>
 <p>Last Updated: 2025-03-15 13:51:22</p>
 <ul>
@@ -20880,7 +20885,7 @@
                 
 </ul>
 </div>
-<div id="Molecular_Neurobiology" class="journal-content" style="display:none;">
+<div id="molecular_neurobiology" class="journal-content" style="display:none;">
 <h2>Molecular Neurobiology</h2>
 <p>Last Updated: 2025-03-15 13:51:23</p>
 <ul>
@@ -21156,7 +21161,7 @@
                 
 </ul>
 </div>
-<div id="iScience" class="journal-content" style="display:none;">
+<div id="iscience" class="journal-content" style="display:none;">
 <h2>iScience</h2>
 <p>Last Updated: 2025-03-15 13:51:25</p>
 <ul>
@@ -21432,7 +21437,7 @@
                 
 </ul>
 </div>
-<div id="Neuropharmacology" class="journal-content" style="display:none;">
+<div id="neuropharmacology" class="journal-content" style="display:none;">
 <h2>Neuropharmacology</h2>
 <p>Last Updated: 2025-03-15 13:51:26</p>
 <ul>
@@ -21708,7 +21713,7 @@
                 
 </ul>
 </div>
-<div id="Journal_of_Physiology" class="journal-content" style="display:none;">
+<div id="journal_of_physiology" class="journal-content" style="display:none;">
 <h2>Journal of Physiology</h2>
 <p>Last Updated: 2025-03-15 13:51:28</p>
 <ul>
@@ -21984,7 +21989,7 @@
                 
 </ul>
 </div>
-<div id="Journal_of_Neuroscience" class="journal-content" style="display:none;">
+<div id="journal_of_neuroscience" class="journal-content" style="display:none;">
 <h2>Journal of Neuroscience</h2>
 <p>Last Updated: 2025-03-15 13:51:30</p>
 <ul>
@@ -22260,7 +22265,7 @@
                 
 </ul>
 </div>
-<div id="Progress_in_Neuro_Psychopharmacology_and_Biological_Psychiatry" class="journal-content" style="display:none;">
+<div id="progress_in_neuro_psychopharmacology_and_biological_psychiatry" class="journal-content" style="display:none;">
 <h2>Progress in Neuro-Psychopharmacology and Biological Psychiatry</h2>
 <p>Last Updated: 2025-03-15 13:51:32</p>
 <ul>
@@ -22536,7 +22541,7 @@
                 
 </ul>
 </div>
-<div id="Brain_Research_Bulletin" class="journal-content" style="display:none;">
+<div id="brain_research_bulletin" class="journal-content" style="display:none;">
 <h2>Brain Research Bulletin</h2>
 <p>Last Updated: 2025-03-15 13:51:34</p>
 <ul>
@@ -22812,7 +22817,7 @@
                 
 </ul>
 </div>
-<div id="Social_Cognitive_and_Affective_Neuroscience" class="journal-content" style="display:none;">
+<div id="social_cognitive_and_affective_neuroscience" class="journal-content" style="display:none;">
 <h2>Social Cognitive and Affective Neuroscience</h2>
 <p>Last Updated: 2025-03-15 13:51:36</p>
 <ul>
@@ -23088,7 +23093,7 @@
                 
 </ul>
 </div>
-<div id="Scientific_Reports" class="journal-content" style="display:none;">
+<div id="scientific_reports" class="journal-content" style="display:none;">
 <h2>Scientific Reports</h2>
 <p>Last Updated: 2025-03-15 13:51:37</p>
 <ul>
@@ -23364,7 +23369,7 @@
                 
 </ul>
 </div>
-<div id="Cortex" class="journal-content" style="display:none;">
+<div id="cortex" class="journal-content" style="display:none;">
 <h2>Cortex</h2>
 <p>Last Updated: 2025-03-15 13:51:39</p>
 <ul>
@@ -23640,7 +23645,7 @@
                 
 </ul>
 </div>
-<div id="European_Journal_of_Neuroscience" class="journal-content" style="display:none;">
+<div id="european_journal_of_neuroscience" class="journal-content" style="display:none;">
 <h2>European Journal of Neuroscience</h2>
 <p>Last Updated: 2025-03-15 13:51:41</p>
 <ul>
@@ -23916,7 +23921,7 @@
                 
 </ul>
 </div>
-<div id="Physiology_&_Behavior" class="journal-content" style="display:none;">
+<div id="physiology_&_behavior" class="journal-content" style="display:none;">
 <h2>Physiology & Behavior</h2>
 <p>Last Updated: 2025-03-15 13:51:42</p>
 <ul>
@@ -24192,7 +24197,7 @@
                 
 </ul>
 </div>
-<div id="Neuroscience_Letters" class="journal-content" style="display:none;">
+<div id="neuroscience_letters" class="journal-content" style="display:none;">
 <h2>Neuroscience Letters</h2>
 <p>Last Updated: 2025-03-15 13:51:45</p>
 <ul>
@@ -24468,7 +24473,7 @@
                 
 </ul>
 </div>
-<div id="Journal_of_Integrative_Neuroscience" class="journal-content" style="display:none;">
+<div id="journal_of_integrative_neuroscience" class="journal-content" style="display:none;">
 <h2>Journal of Integrative Neuroscience</h2>
 <p>Last Updated: 2025-03-15 13:51:47</p>
 <ul>
@@ -24744,7 +24749,7 @@
                 
 </ul>
 </div>
-<div id="International_Journal_of_Neuroscience" class="journal-content" style="display:none;">
+<div id="international_journal_of_neuroscience" class="journal-content" style="display:none;">
 <h2>International Journal of Neuroscience</h2>
 <p>Last Updated: 2025-03-15 13:51:49</p>
 <ul>
@@ -25024,7 +25029,7 @@
                 
 </ul>
 </div>
-<div id="Neurosciences_Journal" class="journal-content" style="display:none;">
+<div id="neurosciences_journal" class="journal-content" style="display:none;">
 <h2>Neurosciences Journal</h2>
 <p>Last Updated: 2025-03-15 13:51:51</p>
 <ul>

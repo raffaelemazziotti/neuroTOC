@@ -1,4 +1,3 @@
-/* General Body Styling */
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
@@ -7,7 +6,6 @@ body {
     overflow-x: hidden;
 }
 
-/* Headings */
 h1 {
     text-align: center;
     font-size: 2em;
@@ -15,12 +13,6 @@ h1 {
     margin: 20px 0;
 }
 
-h2, h3 {
-    color: #4CAF50;
-    padding-left: 5px;
-}
-
-/* Article List */
 ul {
     list-style-type: none;
     padding: 0;
@@ -34,13 +26,11 @@ li, p.article-item {
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-/* Links */
 a {
     color: #2196F3;
     text-decoration: none;
 }
 
-/* Dropdown & Search Input */
 #journalSelect, #searchInput {
     width: 100%;
     padding: 14px;
@@ -50,7 +40,6 @@ a {
     font-size: 16px;
 }
 
-/* Tooltip Styling */
 .tooltip {
     position: absolute;
     display: none;
@@ -61,10 +50,8 @@ a {
     max-width: 90%;
     font-size: 14px;
     z-index: 1000;
-    box-shadow: 0px 2px 5px rgba(0,0,0,0.5);
 }
 
-/* Floating Home Button */
 .home-button {
     position: fixed;
     bottom: 20px;
@@ -75,39 +62,15 @@ a {
     border: none;
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    font-size: 20px;
     z-index: 9999;
-    transition: all 0.3s ease;
+    display: none;
+}
+
+.home-button.show {
+    display: block;
 }
 
 .home-button:hover {
     background-color: #45a049;
     transform: scale(1.1);
-}
-
-/* Responsive Design for Mobile */
-@media screen and (max-width: 600px) {
-    h1 {
-        font-size: 1.5em;
-    }
-
-    #journalSelect, #searchInput {
-        font-size: 18px;
-        padding: 16px;
-    }
-
-    li, p.article-item {
-        padding: 12px;
-        font-size: 16px;
-    }
-
-    .home-button {
-        position: fixed;
-        bottom: 10px;
-        right: 10px;
-        padding: 12px;
-        font-size: 18px;
-        z-index: 9999;
-    }
 }

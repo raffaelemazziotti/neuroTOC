@@ -103,6 +103,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         """
         document.addEventListener("DOMContentLoaded", () => {
             const tooltip = document.getElementById("tooltip");
+            const homeButton = document.querySelector(".home-button");
 
             document.body.addEventListener("mouseover", function (e) {
                 if (e.target.classList.contains("article-link")) {
@@ -132,6 +133,10 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                     section.style.display = section.id === selectedJournal || selectedJournal === 'All_Journals' ? 'block' : 'none';
                 });
             });
+
+            window.addEventListener('scroll', () => {
+                homeButton.classList.toggle('show', window.scrollY > 300);
+            });
         });
 
         function searchArticles() {
@@ -160,9 +165,9 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         '<option value="All_Journals">All Journals</option>'
     ]
 
-    # Add dropdown options and sanitize journal names for IDs
+    # Correct ID generation and dropdown options
     for journal in root.findall('Journal'):
-        journal_id = journal.get('name').replace(" ", "_").replace(":", "").replace("/", "").replace("-", "_")
+        journal_id = journal.get('name').lower().replace(" ", "_").replace(":", "").replace("/", "").replace("-", "_")
         html_content.append(f'<option value="{journal_id}">{journal.get("name")}</option>')
 
     html_content.append('</select>')
@@ -176,9 +181,8 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
 
     for journal in root.findall('Journal'):
         journal_name = journal.get('name')
-        journal_id = journal_name.replace(" ", "_").replace(":", "").replace("/", "").replace("-", "_")
-
         html_content.append(f'<h3>{journal_name}</h3>')
+
         articles = journal.findall('Article')
         if articles:
             html_content.append('<ul>')
@@ -208,7 +212,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     # Individual Journal Sections
     for journal in root.findall('Journal'):
         journal_name = journal.get('name')
-        journal_id = journal_name.replace(" ", "_").replace(":", "").replace("/", "").replace("-", "_")
+        journal_id = journal_name.lower().replace(" ", "_").replace(":", "").replace("/", "").replace("-", "_")
         updated_date = journal.get('updated')
 
         html_content.append(f'<div id="{journal_id}" class="journal-content" style="display:none;">')
@@ -247,6 +251,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         file.write('\n'.join(html_content))
 
     print(f"HTML file saved to {html_file}")
+
 
 # Main execution
 #journals = get_journal_info()
