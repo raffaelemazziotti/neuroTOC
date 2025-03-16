@@ -1,124 +1,131 @@
 /* Reset + box-sizing */
 html, body {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    max-width: 100%;
-    overflow-x: hidden; /* Hide any horizontal scroll */
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-x: hidden; /* Hide horizontal scroll globally */
 }
 *, *:before, *:after {
-    box-sizing: inherit;
+  box-sizing: inherit;
 }
 
 /* Body background + base styling */
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #2e3440, #3b4252);
-    color: #eceff4;
-    padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #2e3440, #3b4252);
+  color: #eceff4;
+  padding: 20px;
 }
 
 /* Headings */
 h1 {
-    text-align: center;
-    color: #88c0d0;
-    margin-bottom: 30px;
+  text-align: center;
+  color: #88c0d0;
+  margin-bottom: 30px;
 }
 h2 {
-    margin-top: 30px;
-    color: #81a1c1;
+  margin-top: 30px;
+  color: #81a1c1;
 }
 
-/* Search & Dropdown Container */
+/* Search + Dropdown Container */
 input[type="text"], .custom-select {
-    width: 100%;
-    margin-bottom: 20px;
+  width: 100%;
+  margin-bottom: 20px;
 }
 input[type="text"] {
-    padding: 15px;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    outline: none;
-    background: rgba(255,255,255,0.1);
-    color: #eceff4;
-    font-size: 16px;
-    transition: 0.3s ease;
+  padding: 15px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  outline: none;
+  background: rgba(255,255,255,0.1);
+  color: #eceff4;
+  font-size: 16px;
+  transition: 0.3s ease;
 }
 input[type="text"]:focus {
-    background: rgba(255,255,255,0.2);
-    border: 1px solid #88c0d0;
-    box-shadow: 0 0 10px rgba(136,192,208,0.5);
+  background: rgba(255,255,255,0.2);
+  border: 1px solid #88c0d0;
+  box-shadow: 0 0 10px rgba(136,192,208,0.5);
 }
 
 /* Custom Dropdown (select) */
 .custom-select {
-    position: relative;
-    display: inline-block;
-    background: rgba(255,255,255,0.1);
-    border-radius: 8px;
-    transition: 0.3s ease;
+  position: relative;
+  display: inline-block;
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
+  transition: 0.3s ease;
 }
 .custom-select:hover {
-    box-shadow: 0 0 10px rgba(136,192,208,0.5);
+  box-shadow: 0 0 10px rgba(136,192,208,0.5);
 }
 .custom-select:focus-within {
-    border: 1px solid #88c0d0;
+  border: 1px solid #88c0d0;
 }
 .custom-select select {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    width: 100%;
-    padding: 15px;
-    border: none;
-    outline: none;
-    border-radius: 8px;
-    background: transparent;
-    color: #eceff4;
-    font-size: 16px;
-    cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 100%;
+  padding: 15px;
+  border: none;
+  outline: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #eceff4;
+  font-size: 16px;
+  cursor: pointer;
 }
 .custom-select::after {
-    content: "▼";
-    position: absolute;
-    top: 50%;
-    right: 18px;
-    transform: translateY(-50%);
-    pointer-events: none;
-    color: #eceff4;
-    transition: transform 0.3s ease;
+  content: "▼";
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #eceff4;
+  transition: transform 0.3s ease;
 }
 .custom-select:focus-within::after {
-    transform: translateY(-50%) rotate(180deg);
+  transform: translateY(-50%) rotate(180deg);
 }
 
 /* Journal Content & Accordion */
 .journal-content {
-    margin-top: 10px;
-    padding: 20px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 8px;
+  margin-top: 10px;
+  padding: 20px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
 }
 .accordion-item {
-    margin-bottom: 20px;
+  margin-bottom: 20px;
 }
 .journal-header {
-    display: block;
-    cursor: pointer;
-    margin-bottom: 10px;
-    padding: 10px;
-    user-select: none;
-    font-size: 18px;
-    color: #81a1c1;
+  display: block;
+  cursor: pointer;
+  margin-bottom: 10px;
+  padding: 10px;
+  user-select: none;
+  font-size: 18px;
+  color: #81a1c1;
 }
 .toggle-icon {
-    margin-right: 10px;
-    color: #81a1c1;
-    font-weight: bold;
-    transition: transform 0.3s ease;
+  margin-right: 10px;
+  color: #81a1c1;
+  font-weight: bold;
+  transition: transform 0.3s ease;
 }
 
-/* Article Cards */
+/* Article list (UL) + Items */
+ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Article Card */
 .article-item {
   position: relative;
   margin-bottom: 20px;
@@ -127,66 +134,65 @@ input[type="text"]:focus {
   box-shadow: 0 4px 30px rgba(0,0,0,0.4);
   border: 1px solid rgba(255,255,255,0.2);
   padding: 20px;
-  cursor: pointer; /* so user sees it's clickable */
-  list-style-type: none; /* Removes bullet from <li> */
+  cursor: pointer; /* entire card toggles abstract, except link */
 }
-
 .article-item:hover {
-    background: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.1);
 }
 
-
-/* "Read More" link on left */
+/* The 'Read More' link inside the card */
 .read-more-link {
-    color: #88c0d0;
-    text-decoration: underline;
-    font-weight: bold;
-    font-size: 16px;
+  color: #88c0d0;
+  text-decoration: underline;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer; /* link is clickable */
 }
 
-/* Floating Home Button (Blue & Centered) */
-.home-button {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60px;
-    height: 60px;
-    background: linear-gradient(145deg, #5e81ac, #81a1c1);
-    color: #fff;
-    border: none;
-    border-radius: 50%;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.4);
-    cursor: pointer;
-    transition: transform 0.3s ease, background 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 28px;
-    z-index: 1000;
-}
-.home-button:hover {
-    transform: translateX(-50%) scale(1.1);
-    background: linear-gradient(145deg, #81a1c1, #88c0d0);
-}
-
+/* Hidden abstract is toggled with JS */
 .abstract {
   margin-top: 10px;
 }
 
-/* Mobile adjustments */
+/* Floating Home Button, bottom-center */
+.home-button {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(145deg, #5e81ac, #81a1c1);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+  cursor: pointer;
+  transition: transform 0.3s ease, background 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  z-index: 1000;
+}
+.home-button:hover {
+  transform: translateX(-50%) scale(1.1);
+  background: linear-gradient(145deg, #81a1c1, #88c0d0);
+}
+
+/* Mobile Adjustments */
 @media screen and (max-width: 600px) {
-    input[type="text"], .custom-select select {
-        font-size: 14px;
-        padding: 12px;
-    }
-    .home-button {
-        width: 50px;
-        height: 50px;
-        font-size: 24px;
-        bottom: 20px;
-    }
-    li.article-item {
-        padding: 15px;
-    }
+  input[type="text"], .custom-select select {
+    font-size: 14px;
+    padding: 12px;
+  }
+  .home-button {
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+    bottom: 20px;
+  }
+  .article-item {
+    padding: 15px;
+  }
 }
