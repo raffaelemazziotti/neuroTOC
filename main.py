@@ -166,9 +166,10 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                     data-title='{title.lower()}'
                     data-abstract='{abstract.lower()}'
                     data-authors='{authors}'>
-                    <strong>{title}</strong> ({art_type})<br>
+                    <strong>{title}</strong> <br>
+                    <p></p>
                     <em>Authors:</em> {authors}<br>
-                    <em>Published:</em> {pub_date}<br>
+                    <em>Published:</em> {pub_date} ({art_type})<br>
                     <a href='{doi}' target='_blank'>Read More</a><br>
                     <p>{abstract}</p>
                 </li>
@@ -179,7 +180,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         all_journals_html += f"""
             <div class="accordion-item">
                 <h3 class="journal-header" data-toggle="{accordion_id}">
-                    <span class="toggle-icon">▼</span> {journal_name}
+                    <span class="toggle-icon">-</span> {journal_name}
                 </h3>
                 <ul id="{accordion_id}" style="display: block;">
                     {articles_html}
@@ -201,10 +202,15 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Journal TOC</title>
         <link rel="stylesheet" type="text/css" href="style.css">
+        <link 
+            rel="stylesheet" 
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+            />
         <script src="script.js" defer></script>
     </head>
-    <body>
-        <h1>Table of Contents (Updated: {update_date})</h1>
+    <body data-updated="{update_date}">
+        <h1>NeuroTOC</h1>
+        <h2 style="text-align: center;">Updated: {update_date.split(' ')[0]}</h2>
 
         <input type="text" id="searchInput" placeholder="Search for articles...">
         <div class="custom-select">
@@ -219,7 +225,9 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
 
         {individual_journals_html}
 
-        <button onclick="scrollToTop()" class="home-button">↑</button>
+        <button onclick="scrollToTop()" class="home-button">
+            <i class="fas fa-home"></i>
+        </button>
     </body>
     </html>
     """

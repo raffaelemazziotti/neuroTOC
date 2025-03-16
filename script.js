@@ -21,10 +21,10 @@ function toggleAccordion(e) {
 
     if (targetUl.style.display === 'block') {
         targetUl.style.display = 'none';
-        icon.textContent = '▲';
+        icon.textContent = '+';
     } else {
         targetUl.style.display = 'block';
-        icon.textContent = '▼';
+        icon.textContent = '-';
     }
 }
 
