@@ -5,6 +5,7 @@ html, body {
   box-sizing: border-box;
   max-width: 100%;
   overflow-x: hidden; /* Hide horizontal scroll globally */
+  -webkit-text-size-adjust: none;
 }
 *, *:before, *:after {
   box-sizing: inherit;
