@@ -1,11 +1,22 @@
-/* Global Body & Background */
+/* Reset box-sizing to avoid overflow */
+html, body {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    overflow-x: hidden; /* Hide horizontal scroll globally */
+}
+
+/* Apply box-sizing to all elements */
+*, *:before, *:after {
+    box-sizing: inherit;
+}
+
+/* Body content styling */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0; /* no extra margin */
-    padding: 20px;
     background: linear-gradient(135deg, #2e3440, #3b4252);
     color: #eceff4;
-    overflow-x: hidden;  /* On large screens, hide horizontal scroll */
+    padding: 20px;  /* Controlled padding */
 }
 
 /* Headings */
@@ -43,7 +54,7 @@ input[type="text"]:focus {
     box-shadow: 0 0 10px rgba(136,192,208,0.5);
 }
 
-/* Custom Dropdown */
+/* Custom Dropdown Wrapper */
 .custom-select {
     position: relative;
     display: inline-block;
@@ -85,7 +96,7 @@ input[type="text"]:focus {
     transform: translateY(-50%) rotate(180deg);
 }
 
-/* Journal Content & Accordion */
+/* Journal Content & Accordion Items */
 .journal-content {
     margin-top: 10px;
     padding: 20px;
@@ -114,10 +125,11 @@ input[type="text"]:focus {
 /* Article List */
 ul {
     list-style-type: none;
+    margin: 0;
     padding: 0;
 }
 
-/* Article Cards (No heavy backdrop-filter to avoid glitch) */
+/* Article Cards (No heavy blur filter) */
 li.article-item {
     background: rgba(255,255,255,0.05);
     padding: 20px;
@@ -169,11 +181,10 @@ a:hover {
     background: linear-gradient(145deg, #81a1c1, #88c0d0);
 }
 
-/* Hide horizontal scroll only on mobile to fix space issue */
+/* On smaller screens, we keep overflow-x hidden
+   if you want to specifically keep it for phone only,
+   comment out or keep as you see fit. */
 @media screen and (max-width: 600px) {
-    body {
-        overflow-x: hidden;  /* Hide horizontal scroll on phone if needed */
-    }
     input[type="text"], .custom-select select {
         font-size: 14px;
         padding: 12px;

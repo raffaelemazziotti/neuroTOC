@@ -9,8 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function setupAccordion() {
     const headers = document.querySelectorAll('.journal-header');
     headers.forEach(header => {
-        // Only "click" so mobile doesn't double-trigger
-        header.addEventListener('click', toggleAccordion);
+        header.addEventListener('click', toggleAccordion); // single event for mobile
     });
 }
 
@@ -44,7 +43,6 @@ function searchArticles() {
         const title = article.getAttribute('data-title');
         const abstract = article.getAttribute('data-abstract');
         const authors = article.getAttribute('data-authors');
-
         article.style.display = (title.includes(input) || abstract.includes(input) || authors.includes(input))
             ? ''
             : 'none';
