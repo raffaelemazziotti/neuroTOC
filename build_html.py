@@ -170,8 +170,10 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                     <p></p>
                     <em>Authors:</em> {authors}<br>
                     <em>Published:</em> {pub_date} ({art_type})<br>
+                    <p></p>
                     <a href='{doi}' target='_blank'>Read More</a><br>
-                    <p>{abstract}</p>
+                    <!-- Abstract is hidden by default -->
+                    <p class="abstract" style="display:none;">{abstract}</p>
                 </li>
             """
 
@@ -200,7 +202,8 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     <html>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Journal TOC</title>
+        <link rel="icon" type="image/svg+xml" href="logo.svg">
+        <title>NeuroTOC</title>
         <link rel="stylesheet" type="text/css" href="style.css">
         <link 
             rel="stylesheet" 
@@ -209,7 +212,16 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         <script src="script.js" defer></script>
     </head>
     <body data-updated="{update_date}">
-        <h1>NeuroTOC</h1>
+        <h1>
+        <img 
+            src="logo.svg" 
+            alt="NT Logo" 
+            width="64" 
+            height="64" 
+            style="float: left; margin-right: 10px; vertical-align: bottom;"
+        >
+        NeuroTOC
+        </h1>
         <h2 style="text-align: center;">Updated: {update_date.split(' ')[0]}</h2>
 
         <input type="text" id="searchInput" placeholder="Search for articles...">

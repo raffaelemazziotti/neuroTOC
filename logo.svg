@@ -1,0 +1,46 @@
+<svg
+  width="64"
+  height="64"
+  viewBox="0 0 55 55"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Gradient Definition -->
+  <defs>
+    <linearGradient id="ntGradient" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5e81ac"/>
+      <stop offset="100%" stop-color="#81a1c1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- T Shape (top-left) -->
+  <path
+    d="
+      M 15 15
+      L 50 15
+
+      M 30 15
+      L 30 50
+    "
+    stroke="url(#ntGradient)"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- N Shape (bottom) -->
+  <path
+    d="
+      M 5 15
+      L 5 50
+
+      M 5 15
+      L 30 50
+    "
+    fill="none"
+    stroke="url(#ntGradient)"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

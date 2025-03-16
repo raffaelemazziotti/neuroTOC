@@ -27,6 +27,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setupAccordion();
     setupScrollSave();
+
+    setupArticleClick();
 });
 
 function restoreState() {
@@ -168,3 +170,21 @@ function scrollToTop() {
         document.body.scrollTop = 0;
     }, 800);
 }
+
+function setupArticleClick() {
+    const items = document.querySelectorAll('.article-item');
+    items.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            // Toggle the <p> inside the clicked li
+            const p = item.querySelector('.abstract');
+            if (p.style.display === 'none') {
+                p.style.display = 'block';
+            } else {
+                p.style.display = 'none';
+            }
+        });
+    });
+}
+
+
