@@ -1,10 +1,38 @@
 document.addEventListener("DOMContentLoaded", () => {
+    const body = document.body;
+    const currentUpdatedDate = body.getAttribute("data-updated") || "N/A";
+    const savedUpdatedDate = localStorage.getItem("siteUpdatedDate");
+
+    // If the site hasn't changed, restore previously saved states
+    if (savedUpdatedDate === currentUpdatedDate) {
+        restoreSearchWord();
+        restoreJournalSelect();
+        restoreAccordionState();
+        restoreScrollPosition();
+    } else {
+        // The site is new or updated
+        localStorage.setItem("siteUpdatedDate", currentUpdatedDate);
+        // Clear old states
+        localStorage.removeItem("scrollPosition");
+        localStorage.removeItem("accordionState");
+        localStorage.removeItem("selectedJournal");
+        localStorage.removeItem("searchWord");
+    }
+
     document.getElementById('searchInput').addEventListener('keyup', searchArticles);
     document.getElementById('journalSelect').addEventListener('change', selectJournal);
 
-    searchArticles();
+    document.getElementById('searchInput').addEventListener('keyup', onSearchChange);
+    document.getElementById('journalSelect').addEventListener('change', onJournalSelect);
+
     setupAccordion();
+    setupScrollSave();
 });
+
+function restoreState() {
+    restoreAccordionState();
+    restoreScrollPosition();
+}
 
 function setupAccordion() {
     const headers = document.querySelectorAll('.journal-header');
@@ -26,7 +54,77 @@ function toggleAccordion(e) {
         targetUl.style.display = 'block';
         icon.textContent = '-';
     }
+
+    saveAccordionState();
 }
+
+function saveAccordionState() {
+    const state = {};
+    document.querySelectorAll('.accordion-item').forEach(item => {
+        const header = item.querySelector('.journal-header');
+        const toggleID = header.getAttribute('data-toggle');
+        const ul = document.getElementById(toggleID);
+        const open = (ul.style.display === 'block');
+        state[toggleID] = open;
+    });
+    localStorage.setItem("accordionState", JSON.stringify(state));
+}
+
+// Restores each journal's open/close state
+function restoreAccordionState() {
+    const savedState = localStorage.getItem("accordionState");
+    if (!savedState) return;
+
+    const state = JSON.parse(savedState);
+    for (let toggleID in state) {
+        const ul = document.getElementById(toggleID);
+        const open = state[toggleID];
+        if (ul) {
+            ul.style.display = open ? 'block' : 'none';
+            // Also fix the icon
+            const icon = ul.parentElement.querySelector('.toggle-icon');
+            if (icon) icon.textContent = open ? '▼' : '▲';
+        }
+    }
+}
+
+// Track and save scroll position while user scrolls
+function setupScrollSave() {
+    window.addEventListener('scroll', () => {
+        localStorage.setItem("scrollPosition", window.scrollY);
+    });
+}
+
+function restoreJournalSelect() {
+    const savedJ = localStorage.getItem("selectedJournal");
+    if (!savedJ) return;
+    document.getElementById('journalSelect').value = savedJ;
+    selectJournal();
+}
+
+// Restore scroll position
+function restoreScrollPosition() {
+    const savedPos = localStorage.getItem("scrollPosition");
+    if (savedPos) {
+        // Jump to the old position
+        window.scrollTo({ top: parseInt(savedPos), left: 0, behavior: 'instant' });
+    }
+}
+
+// Save the changed search word
+function onSearchChange() {
+    localStorage.setItem("searchWord", this.value);
+    searchArticles();  // The existing search function
+}
+
+// Restore search word from localStorage
+function restoreSearchWord() {
+    const savedSearch = localStorage.getItem("searchWord");
+    if (!savedSearch) return;
+    document.getElementById('searchInput').value = savedSearch;
+    searchArticles();
+}
+
 
 function selectJournal() {
     const selected = document.getElementById('journalSelect').value;
@@ -47,6 +145,20 @@ function searchArticles() {
             ? ''
             : 'none';
     });
+}
+
+// Save the changed dropdown selection
+function onJournalSelect() {
+    localStorage.setItem("selectedJournal", this.value);
+    selectJournal();  // The existing function that toggles journal visibility
+}
+
+// Restore the selected journal
+function restoreJournalSelect() {
+    const savedJ = localStorage.getItem("selectedJournal");
+    if (!savedJ) return;
+    document.getElementById('journalSelect').value = savedJ;
+    selectJournal();
 }
 
 function scrollToTop() {
