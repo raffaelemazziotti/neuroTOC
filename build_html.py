@@ -140,18 +140,16 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     root = tree.getroot()
     update_date = root.attrib.get('updated', 'N/A')
 
-    # Build the dropdown + HTML for "All Journals" and individual journals
+    # Build the dropdown plus HTML for "All Journals" and individual journals
     dropdown_options = '<option value="All_Journals">All Journals</option>'
     all_journals_html = "<h2>All Journals</h2>"
     individual_journals_html = ""
 
-    # Loop over each Journal
     for journal in root.findall('Journal'):
         journal_name = journal.get('name')
         journal_id = journal_name.replace(" ", "_").lower()
         dropdown_options += f'<option value="{journal_id}">{journal_name}</option>'
 
-        # Build article HTML
         articles_html = ""
         for article in journal.findall('Article'):
             title = article.find('Title').text if article.find('Title') is not None else "N/A"
@@ -161,23 +159,32 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
             art_type = article.find('Type').text if article.find('Type') is not None else "N/A"
             abstract = article.find('Abstract').text if article.find('Abstract') is not None else "No preview available"
 
+            # Each <li> has a center "article-content" plus a bottom "article-actions" with left and right controls
             articles_html += f"""
-                <li class='article-item'
-                    data-title='{title.lower()}'
-                    data-abstract='{abstract.lower()}'
-                    data-authors='{authors}'>
-                    <strong>{title}</strong> <br>
-                    <p></p>
-                    <em>Authors:</em> {authors}<br>
-                    <em>Published:</em> {pub_date} ({art_type})<br>
-                    <p></p>
-                    <a href='{doi}' target='_blank'>Read More</a><br>
-                    <!-- Abstract is hidden by default -->
-                    <p class="abstract" style="display:none;">{abstract}</p>
+                <li class="article-item">
+                    <div class="article-content">
+                        <strong>{title}</strong><br>
+                        <em>Authors:</em> {authors}<br>
+                        <em>Published:</em> {pub_date} ({art_type})<br>
+
+                        <!-- Abstract is hidden by default -->
+                        <p class="abstract" style="display:none;">
+                            {abstract}
+                        </p>
+                    </div>
+
+                    <!-- Bottom bar: left link + right toggle button -->
+                    <div class="article-actions">
+                        <a href="{doi}" target="_blank" class="read-more-link">Read More</a>
+
+                        <button type="button" class="toggle-abstract-btn">
+                            <span class="abs-expand-icon">+</span>
+                        </button>
+                    </div>
                 </li>
             """
 
-        # Accordion for All Journals: open by default
+        # "All Journals" in an accordion, open by default
         accordion_id = "acc_" + journal_id
         all_journals_html += f"""
             <div class="accordion-item">
@@ -190,41 +197,34 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
             </div>
         """
 
-        # Individual journal sections (hidden by default, toggled via dropdown)
+        # Individual journal sections hidden by default
         individual_journals_html += f'''
             <div id="{journal_id}" class="journal-content" style="display:none;">
                 <ul>{articles_html}</ul>
             </div>
         '''
 
-    # Final HTML content
+    # Final HTML
     html_content = f"""
     <html>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="icon" type="image/svg+xml" href="logo.svg">
+        <link 
+          rel="stylesheet" 
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+        />
+
         <title>NeuroTOC</title>
         <link rel="stylesheet" type="text/css" href="style.css">
-        <link 
-            rel="stylesheet" 
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-            />
         <script src="script.js" defer></script>
     </head>
     <body data-updated="{update_date}">
-        <h1>
-        <img 
-            src="logo.svg" 
-            alt="NT Logo" 
-            width="64" 
-            height="64" 
-            style="float: left; margin-right: 10px; vertical-align: bottom;"
-        >
-        NeuroTOC
-        </h1>
+        <h1>NeuroTOC</h1>
         <h2 style="text-align: center;">Updated: {update_date.split(' ')[0]}</h2>
 
         <input type="text" id="searchInput" placeholder="Search for articles...">
+
         <div class="custom-select">
             <select id="journalSelect">
                 {dropdown_options}
@@ -237,8 +237,9 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
 
         {individual_journals_html}
 
+        <!-- Centered home button at bottom -->
         <button onclick="scrollToTop()" class="home-button">
-            <i class="fas fa-home"></i>
+          <i class="fas fa-home"></i>
         </button>
     </body>
     </html>
@@ -248,6 +249,8 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         f.write(html_content)
 
     print(f"HTML file saved to {html_file}")
+
+
 
 if __name__ == "__main__":
     #journals = get_journal_info()

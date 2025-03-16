@@ -1,23 +1,21 @@
-/* Reset box-sizing to avoid overflow */
+/* Reset + box-sizing */
 html, body {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
     max-width: 100%;
-    overflow-x: hidden; /* Hide horizontal scroll globally */
+    overflow-x: hidden; /* Hide any horizontal scroll */
 }
-
-/* Apply box-sizing to all elements */
 *, *:before, *:after {
     box-sizing: inherit;
 }
 
-/* Body content styling */
+/* Body background + base styling */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #2e3440, #3b4252);
     color: #eceff4;
-    padding: 20px;  /* Controlled padding */
+    padding: 20px;
 }
 
 /* Headings */
@@ -26,7 +24,6 @@ h1 {
     color: #88c0d0;
     margin-bottom: 30px;
 }
-
 h2 {
     margin-top: 30px;
     color: #81a1c1;
@@ -37,8 +34,6 @@ input[type="text"], .custom-select {
     width: 100%;
     margin-bottom: 20px;
 }
-
-/* Search Input */
 input[type="text"] {
     padding: 15px;
     border: 1px solid transparent;
@@ -55,7 +50,7 @@ input[type="text"]:focus {
     box-shadow: 0 0 10px rgba(136,192,208,0.5);
 }
 
-/* Custom Dropdown Wrapper */
+/* Custom Dropdown (select) */
 .custom-select {
     position: relative;
     display: inline-block;
@@ -97,7 +92,7 @@ input[type="text"]:focus {
     transform: translateY(-50%) rotate(180deg);
 }
 
-/* Journal Content & Accordion Items */
+/* Journal Content & Accordion */
 .journal-content {
     margin-top: 10px;
     padding: 20px;
@@ -123,37 +118,59 @@ input[type="text"]:focus {
     transition: transform 0.3s ease;
 }
 
-/* Article List */
-ul {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-}
-
-/* Article Cards (No heavy blur filter) */
-li.article-item {
+/* Article Cards */
+.article-item {
+    display: flex;              /* vertical stacking below */
+    flex-direction: column;
     background: rgba(255,255,255,0.05);
-    padding: 20px;
-    margin-bottom: 15px;
-    border-radius: 12px;
-    transition: transform 0.3s ease, background 0.3s ease;
+    border-radius: 8px;
     box-shadow: 0 4px 30px rgba(0,0,0,0.4);
     border: 1px solid rgba(255,255,255,0.2);
+    margin-bottom: 20px;
+    padding: 20px;
 }
-li.article-item:hover {
-    transform: translateY(-5px);
+.article-item:hover {
     background: rgba(255,255,255,0.1);
 }
 
-/* Links */
-a {
-    color: #88c0d0;
-    text-decoration: none;
-    font-weight: bold;
-    transition: color 0.3s ease;
+/* The main text region in the center */
+.article-content {
+    flex: 1; /* push .article-actions to bottom if needed */
 }
-a:hover {
-    color: #8fbcbb;
+
+/* The bottom bar with left link and right button */
+.article-actions {
+    display: flex;
+    justify-content: space-between;  /* left vs right */
+    align-items: center;
+    margin-top: 16px;
+}
+
+/* "Read More" link on left */
+.read-more-link {
+    color: #88c0d0;
+    text-decoration: underline;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* Toggle abstract button on the right */
+.toggle-abstract-btn {
+    padding: 8px 12px;
+    background-color: #5e81ac;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+}
+.toggle-abstract-btn:hover {
+    background-color: #81a1c1;
+}
+.abs-expand-icon {
+    margin-left: 4px;
+    font-weight: bold;
+    font-size: 16px;
 }
 
 /* Floating Home Button (Blue & Centered) */
@@ -182,9 +199,11 @@ a:hover {
     background: linear-gradient(145deg, #81a1c1, #88c0d0);
 }
 
-/* On smaller screens, we keep overflow-x hidden
-   if you want to specifically keep it for phone only,
-   comment out or keep as you see fit. */
+
+
+
+
+/* Mobile adjustments */
 @media screen and (max-width: 600px) {
     input[type="text"], .custom-select select {
         font-size: 14px;

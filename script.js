@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupAccordion();
     setupScrollSave();
 
-    setupArticleClick();
+    setupAbstractToggles();
 });
 
 function restoreState() {
@@ -171,20 +171,19 @@ function scrollToTop() {
     }, 800);
 }
 
-function setupArticleClick() {
-  const items = document.querySelectorAll('.article-item');
-  items.forEach(item => {
-    item.addEventListener('click', (e) => {
-      // If the user clicked the <a href="..."> link, do not prevent default
-      if (e.target.tagName.toLowerCase() === 'a') {
-        // They clicked "Read More" – let the link open
-        return;
-      }
-
-      // Otherwise, toggle the abstract
+function setupAbstractToggles() {
+  const toggleBtns = document.querySelectorAll('.toggle-abstract-btn');
+  toggleBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
       e.preventDefault();
+      const item = btn.closest('.article-item');
       const p = item.querySelector('.abstract');
-      p.style.display = (p.style.display === 'none') ? 'block' : 'none';
+      //const icon = btn.querySelector('.abs-expand-icon');
+
+      // Toggle open/close
+      const isOpen = (p.style.display === 'block');
+      p.style.display = isOpen ? 'none' : 'block';
+      btn.textContent = isOpen ? '+' : '-';
     });
   });
 }
