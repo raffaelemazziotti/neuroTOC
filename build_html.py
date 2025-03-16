@@ -158,7 +158,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
             pub_date = article.find('PublicationDate').text if article.find('PublicationDate') is not None else "N/A"
             art_type = article.find('Type').text if article.find('Type') is not None else "N/A"
             abstract = article.find('Abstract').text if article.find('Abstract') is not None else "No preview available"
-
+            ###
             # Each <li> has a center "article-content" plus a bottom "article-actions" with left and right controls
             articles_html += f"""
                 <li class="article-item">
