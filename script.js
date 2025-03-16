@@ -172,19 +172,21 @@ function scrollToTop() {
 }
 
 function setupArticleClick() {
-    const items = document.querySelectorAll('.article-item');
-    items.forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
-            // Toggle the <p> inside the clicked li
-            const p = item.querySelector('.abstract');
-            if (p.style.display === 'none') {
-                p.style.display = 'block';
-            } else {
-                p.style.display = 'none';
-            }
-        });
+  const items = document.querySelectorAll('.article-item');
+  items.forEach(item => {
+    item.addEventListener('click', (e) => {
+      // If the user clicked the <a href="..."> link, do not prevent default
+      if (e.target.tagName.toLowerCase() === 'a') {
+        // They clicked "Read More" – let the link open
+        return;
+      }
+
+      // Otherwise, toggle the abstract
+      e.preventDefault();
+      const p = item.querySelector('.abstract');
+      p.style.display = (p.style.display === 'none') ? 'block' : 'none';
     });
+  });
 }
 
 
