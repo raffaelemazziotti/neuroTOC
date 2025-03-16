@@ -120,55 +120,26 @@ input[type="text"]:focus {
 
 /* Article Cards */
 .article-item {
-    display: flex;              /* vertical stacking below */
-    flex-direction: column;
-    background: rgba(255,255,255,0.05);
-    border-radius: 8px;
-    box-shadow: 0 4px 30px rgba(0,0,0,0.4);
-    border: 1px solid rgba(255,255,255,0.2);
-    margin-bottom: 20px;
-    padding: 20px;
+  position: relative;
+  margin-bottom: 20px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 20px;
+  cursor: pointer; /* so user sees it's clickable */
+  list-style-type: none; /* Removes bullet from <li> */
 }
+
 .article-item:hover {
     background: rgba(255,255,255,0.1);
 }
 
-/* The main text region in the center */
-.article-content {
-    flex: 1; /* push .article-actions to bottom if needed */
-}
-
-/* The bottom bar with left link and right button */
-.article-actions {
-    display: flex;
-    justify-content: space-between;  /* left vs right */
-    align-items: center;
-    margin-top: 16px;
-}
 
 /* "Read More" link on left */
 .read-more-link {
     color: #88c0d0;
     text-decoration: underline;
-    font-weight: bold;
-    font-size: 16px;
-}
-
-/* Toggle abstract button on the right */
-.toggle-abstract-btn {
-    padding: 8px 12px;
-    background-color: #5e81ac;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    font-size: 16px;
-    cursor: pointer;
-}
-.toggle-abstract-btn:hover {
-    background-color: #81a1c1;
-}
-.abs-expand-icon {
-    margin-left: 4px;
     font-weight: bold;
     font-size: 16px;
 }
@@ -199,9 +170,9 @@ input[type="text"]:focus {
     background: linear-gradient(145deg, #81a1c1, #88c0d0);
 }
 
-
-
-
+.abstract {
+  margin-top: 10px;
+}
 
 /* Mobile adjustments */
 @media screen and (max-width: 600px) {

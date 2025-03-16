@@ -173,14 +173,11 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                         </p>
                     </div>
 
-                    <!-- Bottom bar: left link + right toggle button -->
-                    <div class="article-actions">
-                        <a href="{doi}" target="_blank" class="read-more-link">Read More</a>
-
-                        <button type="button" class="toggle-abstract-btn">
-                            <span class="abs-expand-icon">+</span>
-                        </button>
-                    </div>
+                     <!-- The 'Read More' link - we want it fully clickable -->
+                    <a href="{doi}" target="_blank" class="read-more-link">Read More</a>
+                    
+                    <!-- Abstract hidden initially -->
+                    <p class="abstract" style="display:none;">{abstract}</p>
                 </li>
             """
 

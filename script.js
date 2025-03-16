@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupAccordion();
     setupScrollSave();
 
-    setupAbstractToggles();
+    setupArticleClick();
 });
 
 function restoreState() {
@@ -171,21 +171,29 @@ function scrollToTop() {
     }, 800);
 }
 
-function setupAbstractToggles() {
-  const toggleBtns = document.querySelectorAll('.toggle-abstract-btn');
-  toggleBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const item = btn.closest('.article-item');
-      const p = item.querySelector('.abstract');
-      //const icon = btn.querySelector('.abs-expand-icon');
+function setupArticleClick() {
+  const items = document.querySelectorAll('.article-item');
 
-      // Toggle open/close
-      const isOpen = (p.style.display === 'block');
-      p.style.display = isOpen ? 'none' : 'block';
-      btn.textContent = isOpen ? '+' : '-';
+  items.forEach(item => {
+    item.addEventListener('click', (e) => {
+
+      // If user clicked an <a> link, let it open (skip toggling).
+      if (e.target.tagName.toLowerCase() === 'a') {
+        // DO NOT prevent default -> the link remains clickable.
+        return;
+      }
+
+      // Else, user clicked on the card (not the link).
+      e.preventDefault();
+
+      // Toggle the abstract
+      const abstractP = item.querySelector('.abstract');
+      if (!abstractP) return; // no abstract found, skip
+      const isOpen = (abstractP.style.display === 'block');
+      abstractP.style.display = isOpen ? 'none' : 'block';
     });
   });
 }
+
 
 
