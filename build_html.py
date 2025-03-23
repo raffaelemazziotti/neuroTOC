@@ -5,7 +5,8 @@ from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
 import pandas as pd
 import re
-
+from datetime import datetime
+from preprint_lib import get_latest_preprints
 
 def save_dataframe_to_html(df: pd.DataFrame, output_file: str = "journals_list.html"):
     """(Optional) Save the DataFrame as a styled HTML table."""
@@ -48,7 +49,6 @@ def save_dataframe_to_html(df: pd.DataFrame, output_file: str = "journals_list.h
         """)
     print(f"HTML table saved to '{output_file}'")
 
-
 def get_journal_info():
     """Fetch the list of journals from Google Sheets as CSV into a DataFrame."""
     sheet_id = "1HIBPpTTpuznVZdr5Kf-hd6vp6iWYJQvjasnrmKv6p8w"
@@ -57,7 +57,6 @@ def get_journal_info():
     df = pd.read_csv(url)
     return df
 
-
 def clean_abstract(raw_abstract):
     """Strip HTML tags from the abstract, fallback to 'No preview available' if missing."""
     if raw_abstract and raw_abstract != 'N/A':
@@ -65,16 +64,33 @@ def clean_abstract(raw_abstract):
         return soup.get_text(strip=True)
     return "No preview available"
 
+def get_journal_toc(issn):
+    """Fetch all articles from this month for a given journal (ISSN) using CrossRef API with pagination."""
+    today = datetime.utcnow()
+    month_start = today.replace(day=1).strftime('%Y-%m-%d')
 
-def get_journal_toc(issn, num_articles=30):
-    """Fetch the TOC for a given ISSN from CrossRef."""
-    url = f"https://api.crossref.org/journals/{issn}/works?sort=published&order=desc&rows={num_articles}"
-    response = requests.get(url)
-    if response.status_code == 200:
+    url = f"https://api.crossref.org/journals/{issn}/works"
+    params = {
+        "filter": f"from-pub-date:{month_start}",
+        "sort": "published",
+        "order": "desc",
+        "rows": 100,
+        "cursor": "*"
+    }
+
+    all_articles = []
+    while True:
+        response = requests.get(url, params=params)
+        if response.status_code != 200:
+            print(f"Error fetching ISSN {issn}: {response.status_code}")
+            break
+
         data = response.json()
-        articles = data.get('message', {}).get('items', [])
-        toc = []
-        for article in articles:
+        items = data.get("message", {}).get("items", [])
+        if not items:
+            break
+
+        for article in items:
             title = article.get('title', ['N/A'])[0]
             doi = article.get('URL', 'N/A')
             authors_raw = article.get('author', [])
@@ -88,24 +104,43 @@ def get_journal_toc(issn, num_articles=30):
                 pub_date.append('N/A')
             art_type = article.get('type', 'N/A')
 
-            toc.append({
+            all_articles.append({
                 'title': title,
                 'journal': journal,
                 'pub_date': pub_date,
                 'abstract': abstract,
                 'authors': authors,
                 'type': art_type,
-                'doi': f'{doi}'
+                'doi': doi
             })
-        return toc
-    else:
-        print(f"Error fetching ISSN {issn}: {response.status_code}")
-        return []
+
+        next_cursor = data.get("message", {}).get("next-cursor")
+        if not next_cursor or next_cursor == params["cursor"]:
+            break
+
+        params["cursor"] = next_cursor
+
+    return all_articles
 
 
 def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
     """Save all TOC data into an XML file."""
     root = ET.Element("JournalsTOC", updated=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    # TODO insert preprints
+    print('Downloading TOC from: Biorxiv')
+    neuro_preprints = get_latest_preprints()
+    journal_elem = ET.SubElement(root, "Journal",
+                                 name='Biorxiv',
+                                 issn='0000-0000',
+                                 updated=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    for article in neuro_preprints:
+        article_elem = ET.SubElement(journal_elem, "Article")
+        ET.SubElement(article_elem, "Title").text = article['title']
+        ET.SubElement(article_elem, "Type").text = article['type']
+        ET.SubElement(article_elem, "PublicationDate").text = article['date']
+        ET.SubElement(article_elem, "Authors").text = article['authors']
+        ET.SubElement(article_elem, "DOI").text = article['doi']
+        ET.SubElement(article_elem, "Abstract").text = article['abstract']
 
     for _, journal in journals.iterrows():
         print(f"Downloading TOC from: {journal['Journal Name']}")

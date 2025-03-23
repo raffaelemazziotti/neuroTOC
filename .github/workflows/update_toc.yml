@@ -2,8 +2,8 @@ name: Update TOC and Deploy
 
 on:
   schedule:
-    - cron: '0 0 1 * *'  # Runs at midnight on the 1st of every month 
-  workflow_dispatch:      # Allows manual triggering
+    - cron: '0 0 * * 1'  # Every Monday
+  workflow_dispatch:      #  manual triggering
 
 jobs:
   update-toc:
