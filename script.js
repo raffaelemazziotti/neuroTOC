@@ -109,17 +109,22 @@ function restoreSearchWord() {
   if (!savedSearch) return;
   document.getElementById('searchInput').value = savedSearch;
 }
+
 function searchArticles() {
-  const input = document.getElementById('searchInput').value.toLowerCase().trim();
-  const articles = document.querySelectorAll('.article-item');
-  articles.forEach(article => {
-    const title = article.getAttribute('data-title') || "";
-    const abs   = article.getAttribute('data-abstract') || "";
-    const auth  = article.getAttribute('data-authors') || "";
-    article.style.display = (title.includes(input) || abs.includes(input) || auth.includes(input))
-      ? ''
-      : 'none';
-  });
+    const input = document.getElementById('searchInput').value.toLowerCase().trim();
+    const articles = document.querySelectorAll('.article-item');
+    let count = 0;
+
+    articles.forEach(article => {
+        const title = article.getAttribute('data-title') || '';
+        const abstract = article.getAttribute('data-abstract') || '';
+        const authors = article.getAttribute('data-authors') || '';
+        const isVisible = (title.includes(input) || abstract.includes(input) || authors.includes(input));
+        article.style.display = isVisible ? '' : 'none';
+        if (isVisible) count++;
+    });
+
+    document.getElementById('articleCount').textContent = `Showing ${count} article${count !== 1 ? 's' : ''}`;
 }
 
 // -------------------------------------------

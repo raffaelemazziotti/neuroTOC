@@ -263,6 +263,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
   <h2 style="text-align: center;">Updated: {update_date.split(' ')[0]}</h2>
 
   <input type="text" id="searchInput" placeholder="Search for articles...">
+  <p id="articleCount" class="article-count">Showing 0 articles</p>
 
   <div class="custom-select">
     <select id="journalSelect">

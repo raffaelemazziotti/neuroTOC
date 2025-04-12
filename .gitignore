@@ -105,3 +105,5 @@ site-packages/
 
 # Ignore Python bytecode in directories
 **/__pycache__/
+
+index.html

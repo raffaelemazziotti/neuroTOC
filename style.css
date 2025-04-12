@@ -182,6 +182,15 @@ ul {
   background: linear-gradient(145deg, #81a1c1, #88c0d0);
 }
 
+.article-count {
+    margin-top: -10px;
+    margin-bottom: 20px;
+    font-size: 16px;
+    color: #d8dee9;
+    text-align: right;
+}
+
+
 /* Mobile Adjustments */
 @media screen and (max-width: 600px) {
   input[type="text"], .custom-select select {
