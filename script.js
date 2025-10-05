@@ -123,7 +123,7 @@ function searchArticles() {
         article.style.display = isVisible ? '' : 'none';
         if (isVisible) count++;
     });
-
+    count = count/2;
     document.getElementById('articleCount').textContent = `Showing ${count} article${count !== 1 ? 's' : ''}`;
 }
 
