@@ -245,7 +245,7 @@ class ArticleClassifier2:
         """
         Determine if a keyword should be added to the neuroscience keyword list.
         Local pre-check:
-          - exact match → code 2
+          - exact match → code 2 [already present]
           - close match (similarity ≥ threshold) → code 3
         Otherwise, query the model (Mistral) using the 0–4 scheme with explanation.
         """
@@ -343,6 +343,155 @@ class ArticleClassifier2:
             results = []
             for i in range(3):
                 r = self.verify_keyword(kw)
+                results.append(r.get('code'))
+            count_4 = results.count(4)
+
+            if count_4 >= 2:
+                self.known_keywords.add(kw)
+                verified.append(kw)
+                print(f"{kw}: added ({count_4}/3 = 4)")
+            else:
+                discarded.append(kw)
+                print(f"{kw}: discarded ({count_4}/3 = 4)")
+
+        # clear verified/discarded from new_keywords pool
+        self.new_keywords -= set(verified)
+        self.new_keywords -= set(discarded)
+
+        return {'added': verified, 'discarded': discarded}
+
+class OllamaServerClient:
+    """Client for interacting with the remote FastAPI + Ollama server."""
+
+    def __init__(self, host="", timeout=180):
+        self.host = host.rstrip("/")
+        self.timeout = timeout
+
+    # ----- generic question -----
+    def ask(self, prompt, model=None):
+        url = f"{self.host}/ask"
+        payload = {"prompt": prompt}
+        if model:
+            payload["model"] = model
+        try:
+            r = requests.post(url, json=payload, timeout=self.timeout)
+            r.raise_for_status()
+            data = r.json()
+            return data.get("response", data)
+        except Exception as e:
+            return {"error": str(e)}
+
+    # TODO implement keywords
+    def classify(self, article, keywords=None):
+        """articles = [(title, abstract), ...]"""
+        url = f"{self.host}/classify"
+        payload = {"articles": [{"title": article['Title'], "abstract": article['Abstract']}] }
+        try:
+            r = requests.post(url, json=payload, timeout=self.timeout)
+            r.raise_for_status()
+            return r.json().get("results", [])
+        except Exception as e:
+            return {"Internal error": str(e)}
+
+    # ----- keyword verification -----
+    def verify_keyword(self, keyword):
+        url = f"{self.host}/verify_keyword"
+        try:
+            r = requests.post(url, params={"keyword": keyword}, timeout=self.timeout)
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:
+            return {"Internal error": str(e)}
+
+    # ----- keyword management -----
+    def get_keywords(self):
+        url = f"{self.host}/keywords"
+        try:
+            r = requests.get(url, timeout=self.timeout)
+            r.raise_for_status()
+            return r.json().get("known_keywords", [])
+        except Exception as e:
+            return {"Internal error": str(e)}
+
+    def add_keyword(self, keyword):
+        url = f"{self.host}/add_keyword"
+        try:
+            r = requests.post(url, params={"keyword": keyword}, timeout=self.timeout)
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:
+            return {"Internal error": str(e)}
+
+class ArticleClassifierOllama:
+    def __init__(self, host=""):
+        self.host = host
+        self.ollama = OllamaServerClient(host=self.host)
+        self.load_keywords('keywords.json')
+        self.new_keywords = set()  # store candidate new keywords
+        self.enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
+
+    def classify(self,article,keywords=None):
+        results = self.ollama.classify(article,keywords)
+
+        # --- collect new keywords ---
+        known_lower = {k.lower() for k in self.known_keywords}
+
+        if results['neuroscience'] == 'yes':
+            for kw in results['specific_keywords']:
+                if kw.lower() not in known_lower:
+                    self.new_keywords.add(kw)
+        return results
+
+    def prompt_length(self, prompt):
+        chars = len(prompt)
+        tokens = len(self.enc.encode(prompt))
+        print(f"Prompt length in chars: {chars}, tokens: {tokens}")
+        return tokens, chars
+
+    def load_keywords(self, path):
+        """Load known keywords from a JSON file, safe if file missing or corrupted."""
+        if not os.path.exists(path):
+            self.known_keywords = set()
+            print("Keyword file not found, starting with empty set.")
+            return
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            if isinstance(data, list):
+                self.known_keywords = set(data)
+            else:
+                print("Invalid keyword file format, starting empty.")
+                self.known_keywords = set()
+        except Exception as e:
+            print(f"Error loading keywords: {e}")
+            self.known_keywords = set()
+
+    def save_keywords(self, path):
+        """Save known keywords to a JSON file."""
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(sorted(self.known_keywords), f, ensure_ascii=False, indent=2)
+
+    def verify_new_keywords(self):
+        """
+        Verify all new candidate keywords collected in self.new_keywords.
+        Each keyword is verified three times.
+        - If at least 2 out of 3 checks return code 4 → add to known_keywords.
+        - Otherwise → discard the keyword.
+        Prints only the keyword and whether it was added or discarded.
+        Returns {'added': [...], 'discarded': [...]}.
+        """
+        if not self.new_keywords:
+            print("No new keywords to verify.")
+            return
+
+        verified = []
+        discarded = []
+
+        for kw in sorted(self.new_keywords):
+            results = []
+            for i in range(3):
+                #r = self.verify_keyword(kw)
+                r = self.ollama.verify_keyword(kw)
                 results.append(r.get('code'))
             count_4 = results.count(4)
 
