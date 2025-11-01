@@ -435,7 +435,6 @@ class ArticleClassifierOllama:
 
         # --- collect new keywords ---
         known_lower = {k.lower() for k in self.known_keywords}
-
         if results['neuroscience'] == 'yes':
             for kw in results['specific_keywords']:
                 if kw.lower() not in known_lower:
