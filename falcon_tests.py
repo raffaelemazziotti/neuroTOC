@@ -139,19 +139,49 @@ class ArticleClassifier2:
     def _format_prompt(self, articles):
         keyword_list = ', '.join(sorted(self.known_keywords)) if self.known_keywords else 'None'
         prompt_lines = [
+            "You are a neuroscientist and neurobiologist, psychologist and psychiatrist specialized in classification of scientific articles.",
+            "Your task: for each article, decide if it belongs to neuroscience, identify its type, and assign keywords strictly from the known list.",
+            "Goal: build a consistent, standardized keyword system for clustering neuroscience articles.",
+            "",
+            "Rules:",
+            "- If the article is not neuroscience-related, write 'no' in item 1 and use only the single keyword 'other' in both keyword fields.",
+            "- You must use only the known keywords listed below in item 3. Never invent, modify, or guess new ones. Leave the field empty if none apply.",
+            f"- Known keywords list (use exactly as written): {keyword_list}",
+            "- In item 4 you may include new, article-specific keywords if useful.",
+            "- Exclude errata, corrections, and editorials.",
+            "",
+            "Output format must be exactly as below. No explanations, extra text, or punctuation.",
+            "Repeat the structure for each article, replacing ## with the article number:",
+            "",
+            "Article ##:",
+            "1. yes or no",
+            "2. article type (choose one: article, review, commentary, or other)",
+            "3. known keywords (up to 15 terms, from the known keywords list only; leave blank if none apply)",
+            "4. article-specific keywords (add new article specific terms)",
+            "",
+            "Example of correct output:",
+            "1. yes",
+            "2. article",
+            "3. anticipatory control, genetic models, neural synchronization",
+            "4. LTP, development, fluoxetine",
+            "",
+            "Do not add explanations, labels, or extra text. Follow this format exactly."
+        ]
+
+        '''prompt_lines = [
             "You are a neuroscientist and a neurobiologist obsessed with classification of scientific articles.",
             "Your task: decide if each article belongs to neuroscience, assign its type, and select keywords from the known keywords list.",
             "Purpose: to create a consistent keyword system for clustering articles by topic similarity.",
             "If the article is not related to neuroscience, write 'no' in item 1 and use only the single keyword 'other' in both keyword lists.",
-            f"Known keywords: {keyword_list}. You must assign only known keywords to each article.",
+            f"This is the list of known keywords you need to stick to: {keyword_list}. You must assign only known keywords to the article.",
             "Output format must be *exactly* as specified. Do not add explanations, punctuation, labels, or text other than the required answers.",
             "Repeat the structure below for each article, replacing ## with the article number:",
             "",
             "Article ##:",
-            "1. yes or no (answer only if the article is neuroscience-related)",
+            "1. yes or no (answer only if the article is neuroscience-related, exclude erratum, corrections and editorials)",
             "2. article type (choose only one: article, review, commentary, or other)",
-            "3. known keywords classification (only terms from the list of known keywords are allowed, write exactly like they appear in the list, in this part don't introduce new keywords)",
-            "4. find specific keywords (find new specific keywords that better describe the article)",
+            "3. known keywords classification (up to 15 keywords, select only terms from the list of known keywords, write exactly like they appear in the list, don't introduce new keywords here)",
+            "4. article specific keywords (here you can introduce new keywords that better describe the article)",
             "",
             "Example of expected output:",
             "1. yes",
@@ -160,7 +190,8 @@ class ArticleClassifier2:
             "4. LTP, development, fluoxetine",
             "",
             "Do not include any other text or explanations in your answer."
-        ]
+        ]'''
+
         for i, (title, abstract) in enumerate(articles, start=1):
             prompt_lines.append(f"Article {i}\nTitle: {title}\nAbstract: {abstract}\n")
         return '\n'.join(prompt_lines)
