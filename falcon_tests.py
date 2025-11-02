@@ -132,26 +132,26 @@ class ArticleClassifier2:
     def __init__(self, model='falcon3', host='http://localhost:11434'):
         self.model = model
         self.url = f'{host}/api/generate'
-        self.known_keywords = set()
+        self.load_keywords("keywords.json")
         self.new_keywords = set()  # store candidate new keywords
         self.enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
 
     def _format_prompt(self, articles):
         keyword_list = ', '.join(sorted(self.known_keywords)) if self.known_keywords else 'None'
         prompt_lines = [
-            "You are a neuroscientist and a neurobiologist and must classify one or more scientific articles.",
-            "Your task: decide if each article belongs to neuroscience, assign its type, and extract general and specific topic keywords.",
+            "You are a neuroscientist and a neurobiologist obsessed with classification of scientific articles.",
+            "Your task: decide if each article belongs to neuroscience, assign its type, and select keywords from the known keywords list.",
             "Purpose: to create a consistent keyword system for clustering articles by topic similarity.",
             "If the article is not related to neuroscience, write 'no' in item 1 and use only the single keyword 'other' in both keyword lists.",
-            f"Known keywords: {keyword_list}. Assign one or more known keywords to each article.",
+            f"Known keywords: {keyword_list}. You must assign only known keywords to each article.",
             "Output format must be *exactly* as specified. Do not add explanations, punctuation, labels, or text other than the required answers.",
             "Repeat the structure below for each article, replacing ## with the article number:",
             "",
             "Article ##:",
             "1. yes or no (answer only if the article is neuroscience-related)",
             "2. article type (choose only one: article, review, commentary, or other)",
-            "3. general topic keywords (strictly pick the terms from known keywords)",
-            "4. specific keywords (max 5, article specific keywords, you can pick from known keywords or find new keywords)",
+            "3. known keywords classification (only terms from the list of known keywords are allowed, write exactly like they appear in the list, in this part don't introduce new keywords)",
+            "4. find specific keywords (find new specific keywords that better describe the article)",
             "",
             "Example of expected output:",
             "1. yes",
@@ -185,7 +185,7 @@ class ArticleClassifier2:
                 parsed['specific_keywords'] = [kw.strip() for kw in line[2:].split(',') if kw.strip()]
         return parsed
 
-    def classify(self, articles, parse=True, count_tokens=False):
+    def classify(self, articles, keywords=None, parse=True, count_tokens=False):
         if isinstance(articles, tuple):
             articles = [articles]
         prompt = self._format_prompt(articles)
@@ -425,7 +425,7 @@ class OllamaServerClient:
 class ArticleClassifierOllama:
     def __init__(self, host=""):
         self.host = host
-        self.ollama = OllamaServerClient(host=self.host)
+        self.ollama = ArticleClassifier2(host=self.host)#OllamaServerClient(host=self.host)
         self.load_keywords('keywords.json')
         self.new_keywords = set()  # store candidate new keywords
         self.enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
