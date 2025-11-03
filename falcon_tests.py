@@ -416,7 +416,7 @@ class OllamaServerClient:
     def classify(self, article, keywords=None):
         """articles = [(title, abstract), ...]"""
         url = f"{self.host}/classify"
-        payload = {"articles": [{"title": article['Title'], "abstract": article['Abstract']}] }
+        payload = {"articles": [{"title": article['Title'], "abstract": article['Abstract']}] , "keywords":keywords}
         try:
             r = requests.post(url, json=payload, timeout=self.timeout)
             r.raise_for_status()
@@ -425,10 +425,10 @@ class OllamaServerClient:
             return {"Internal error": str(e)}
 
     # ----- keyword verification -----
-    def verify_keyword(self, keyword):
+    def verify_keyword(self, keyword,keywords):
         url = f"{self.host}/verify_keyword"
         try:
-            r = requests.post(url, params={"keyword": keyword}, timeout=self.timeout)
+            r = requests.post(url, json={"keyword": keyword, "keywords": list(keywords) }, timeout=self.timeout)
             r.raise_for_status()
             return r.json()
         except Exception as e:
@@ -456,12 +456,12 @@ class OllamaServerClient:
 class ArticleClassifierOllama:
     def __init__(self, host=""):
         self.host = host
-        self.ollama = ArticleClassifier2(host=self.host)#OllamaServerClient(host=self.host)
+        self.ollama = OllamaServerClient(host=self.host)
         self.load_keywords('keywords.json')
         self.new_keywords = set()  # store candidate new keywords
         self.enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
 
-    def classify(self,article,keywords=None):
+    def classify(self,article, keywords=None):
         results = self.ollama.classify(article,keywords)
 
         # --- collect new keywords ---
@@ -521,17 +521,17 @@ class ArticleClassifierOllama:
             results = []
             for i in range(3):
                 #r = self.verify_keyword(kw)
-                r = self.ollama.verify_keyword(kw)
+                r = self.ollama.verify_keyword(kw,self.known_keywords )
                 results.append(r.get('code'))
             count_4 = results.count(4)
 
             if count_4 >= 2:
-                self.known_keywords.add(kw)
+                #self.known_keywords.add(kw)
                 verified.append(kw)
-                print(f"{kw}: added ({count_4}/3 = 4)")
+                #print(f"{kw}: added ({count_4}/3 = 4)")
             else:
                 discarded.append(kw)
-                print(f"{kw}: discarded ({count_4}/3 = 4)")
+                #print(f"{kw}: discarded ({count_4}/3 = 4)")
 
         # clear verified/discarded from new_keywords pool
         self.new_keywords -= set(verified)
