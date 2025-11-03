@@ -30,7 +30,7 @@ jobs:
         run: |
           git config --local user.name 'raffaelemazziotti'
           git config --local user.email "${{ secrets.MY_EMAIL }}"
-          git add all_journals_toc.xml index.html
+          git add -f all_journals_toc.xml index.html
           git commit -m "Automated monthly update"
           git push --force
       - name: Push changes
