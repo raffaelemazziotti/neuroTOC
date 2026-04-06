@@ -128,7 +128,10 @@ def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
     root = ET.Element("JournalsTOC", updated=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     # TODO insert preprints
     print('Downloading TOC from: Biorxiv')
-    neuro_preprints = get_latest_preprints()
+    try:
+        neuro_preprints = get_latest_preprints()
+    except:
+        neuro_preprints = []
     journal_elem = ET.SubElement(root, "Journal",
                                  name='Biorxiv',
                                  issn='0000-0000',
