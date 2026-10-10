@@ -1,5 +1,5 @@
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
@@ -65,15 +65,12 @@ def clean_abstract(raw_abstract):
     return "No preview available"
 
 def get_journal_toc(issn):
-    """Fetch all articles from this month for a given journal (ISSN) using CrossRef API with pagination."""
-    today = datetime.utcnow()
-    month_start = today.replace(day=1).strftime('%Y-%m-%d')
+    """Fetch all articles from the last 30 days for a given journal (ISSN) using CrossRef API with pagination."""
+    month_start = (datetime.utcnow() - timedelta(days=30)).strftime('%Y-%m-%d')
 
     url = f"https://api.crossref.org/journals/{issn}/works"
     params = {
         "filter": f"from-pub-date:{month_start}",
-        "sort": "published",
-        "order": "desc",
         "rows": 100,
         "cursor": "*"
     }
@@ -82,7 +79,7 @@ def get_journal_toc(issn):
     while True:
         response = requests.get(url, params=params)
         if response.status_code != 200:
-            print(f"Error fetching ISSN {issn}: {response.status_code}")
+            print(f"Error fetching ISSN {issn}: {response.status_code} {response.text[:300]}")
             break
 
         data = response.json()
@@ -120,6 +117,8 @@ def get_journal_toc(issn):
 
         params["cursor"] = next_cursor
 
+    # CrossRef no longer allows sorting by publication date together with a cursor, so sort here (newest first)
+    all_articles.sort(key=lambda a: [p if isinstance(p, int) else 0 for p in a['pub_date']], reverse=True)
     return all_articles
 
 
