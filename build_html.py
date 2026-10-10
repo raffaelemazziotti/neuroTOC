@@ -9,6 +9,7 @@ import html
 from preprint_lib import get_latest_preprints
 from pubmed_lib import get_pubmed_records, normalize_doi
 from openalex_lib import get_openalex_records
+from trends_lib import build_trends
 
 def save_dataframe_to_html(df: pd.DataFrame, output_file: str = "journals_list.html"):
     """(Optional) Save the DataFrame as a styled HTML table."""
@@ -352,12 +353,13 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     journal_nav = ""
     sections_html = ""
     total_articles = 0
+    page_articles = []  # what the trends page counts: exactly the articles shown
 
     for journal in root.findall('Journal'):
         journal_name = journal.get('name')
         journal_id = re.sub(r'[^a-z0-9]+', '_', journal_name.lower()).strip('_')
 
-        cards = []  # (card html, is neuroscience per OpenAlex or None, neuroscience word in title)
+        cards = []  # (card html, is neuroscience per OpenAlex or None, neuroscience word in title, article info)
         for article in journal.findall('Article'):
             title = clean_text(article.findtext('Title')) or "N/A"
             doi = article.findtext('DOI') or "#"
@@ -399,20 +401,23 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                 f'<p class="abstract">{html.escape(abstract)}</p>{tags_html}</div></details>'
                 f'<a href="{html.escape(doi)}" target="_blank" rel="noopener" class="read-more-link">Read article &#8599;</a></li>\n',
                 is_neuroscience(article, title),
-                neuro_title(title)
+                neuro_title(title),
+                {'title': title, 'abstract': abstract if has_abstract else '', 'has_abstract': has_abstract,
+                 'topic': topic, 'tags': tags, 'journal': journal_name, 'kind': kind}
             ))
 
         # General journals keep only their neuroscience articles (bioRxiv is already the neuroscience category)
-        judged = [neuro for _, neuro, _ in cards if neuro is not None]
+        judged = [neuro for _, neuro, _, _ in cards if neuro is not None]
         neuro_share = sum(judged) / len(judged) if judged else 1
         if journal.get('issn') != '0000-0000' and neuro_share < NEURO_JOURNAL_SHARE:
             # articles OpenAlex does not know yet are judged on their title alone
-            kept = [card for card, neuro, title_hit in cards if neuro or (neuro is None and title_hit)]
+            kept = [(card, info) for card, neuro, title_hit, info in cards if neuro or (neuro is None and title_hit)]
             excluded['off-topic'] = excluded.get('off-topic', 0) + len(cards) - len(kept)
             print(f"General journal: {journal_name} ({neuro_share:.0%} neuroscience), kept {len(kept)} of {len(cards)}")
         else:
-            kept = [card for card, _, _ in cards]
-        articles_html = "".join(kept)
+            kept = [(card, info) for card, _, _, info in cards]
+        articles_html = "".join(card for card, _ in kept)
+        page_articles += [info for _, info in kept]
         n_articles = len(kept)
 
         total_articles += n_articles
@@ -452,6 +457,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         <span class="brand-text">NeuroTOC</span>
       </a>
       <span class="updated">Updated {html.escape(update_date.split(' ')[0])}</span>
+      <nav class="topnav"><a class="nav-pill active" href="index.html" aria-current="page">Articles</a><a class="nav-pill" href="trends.html">Trends</a></nav>
       <input type="search" id="searchInput" placeholder="Search titles, authors, abstracts..." aria-label="Search articles">
       <button type="button" id="journalsButton" class="journals-button" aria-controls="sidebar" aria-expanded="false">
         <span id="journalsButtonLabel">All journals</span> &#9662;
@@ -497,6 +503,8 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
 
     print(f"Excluded articles: {sum(excluded.values())} {excluded}")
     print(f"HTML file saved to {html_file}")
+
+    build_trends(page_articles, update_date.split(' ')[0])
 
 
 if __name__ == "__main__":

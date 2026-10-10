@@ -34,7 +34,7 @@ jobs:
         run: |
           git config --local user.name 'raffaelemazziotti'
           git config --local user.email "${{ secrets.MY_EMAIL }}"
-          git add -f all_journals_toc.xml index.html journals_list.html
+          git add -f all_journals_toc.xml index.html journals_list.html trends.html trends/
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "Automated weekly update"
           git push

@@ -15,6 +15,10 @@
   --shadow: 0 10px 30px rgba(0,0,0,0.35);
   --topbar-h: 64px; /* updated from script.js with the real height */
   --radius: 10px;
+  /* chart colors, validated for the dark card surface (#3b4252) */
+  --viz-bar: #4593d9;
+  --viz-up: #4593d9;
+  --viz-down: #de6f34;
 }
 @media (prefers-color-scheme: light) {
   :root {
@@ -31,6 +35,10 @@
     --mark-text: #2e3440;
     --topbar-bg: rgba(236,239,244,0.92);
     --shadow: 0 10px 30px rgba(46,52,64,0.18);
+    /* chart colors, validated for the light card surface (#ffffff) */
+    --viz-bar: #2a78d6;
+    --viz-up: #2a78d6;
+    --viz-down: #eb6834;
   }
 }
 
@@ -118,6 +126,32 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Articles / Trends switch in the top bar */
+.topnav {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+.nav-pill {
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.nav-pill:hover {
+  color: var(--text);
+}
+.nav-pill.active {
+  background: var(--tag-bg);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 /* Two-column layout: journal sidebar + articles */
@@ -500,5 +534,221 @@ button:focus-visible, a:focus-visible, summary:focus-visible, .journal-header:fo
   }
   .updated-inline {
     display: inline;
+  }
+}
+
+/* ---------- Trends page ---------- */
+.trends-page .topbar-inner {
+  max-width: 1100px;
+}
+.trends-page .topnav {
+  margin-left: auto;
+}
+.trends-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 24px 80px;
+}
+.trends-title {
+  margin: 8px 0 6px;
+  font-size: 28px;
+  color: var(--text);
+}
+.trends-intro, .trends-note {
+  max-width: 760px;
+  margin: 0 0 20px;
+  color: var(--muted);
+}
+.trends-note {
+  margin-top: 28px;
+  font-size: 13px;
+}
+/* stat tiles: label on top, value below (proportional figures for big numbers) */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.stat-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+.stat-value {
+  font-size: 26px;
+  font-weight: 600;
+}
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  align-items: start;
+  gap: 16px;
+}
+.viz-card {
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.viz-wide {
+  margin-bottom: 16px;
+}
+.viz-card h2 {
+  margin: 0;
+  font-size: 17px;
+  color: var(--text);
+}
+.viz-card h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.viz-sub {
+  margin: 2px 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.viz-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+/* horizontal bars: label | bar from a hairline baseline | value at the tip */
+.bar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(0, 42%) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 4px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.bar-row:hover {
+  background: var(--surface-hover);
+}
+.bar-label {
+  overflow-wrap: anywhere;
+}
+.bar-label a {
+  color: var(--text);
+  text-decoration: none;
+}
+.bar-label a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.bar-track {
+  display: block;
+  border-left: 1px solid var(--border);
+}
+.bar {
+  display: block;
+  height: 12px;
+  border-radius: 0 4px 4px 0;
+  background: var(--viz-bar);
+}
+.bar-row:hover .bar {
+  filter: brightness(1.15);
+}
+.bar-value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.bar-share {
+  color: var(--muted);
+}
+.change-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+.change-list.up .bar {
+  background: var(--viz-up);
+}
+.change-list.down .bar {
+  background: var(--viz-down);
+}
+.change-kind {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+/* keyword chips link to a search on the articles page */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  text-decoration: none;
+}
+.chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.chip-count {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+@media screen and (max-width: 900px) {
+  .trends-main {
+    padding: 16px 12px 60px;
+  }
+  .trends-title {
+    font-size: 22px;
+  }
+  .viz-grid {
+    grid-template-columns: 1fr;
+  }
+  .viz-card {
+    padding: 14px;
+  }
+  .stat-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .stat-value {
+    font-size: 22px;
+  }
+  .bar-row {
+    grid-template-columns: minmax(0, 46%) minmax(0, 1fr) auto;
+    font-size: 13px;
+  }
+  .bar-share {
+    display: none;
+  }
+}
+@media screen and (max-width: 480px) {
+  /* main page: logo + Articles/Trends + journal button share one row */
+  body:not(.trends-page) .brand-text {
+    display: none;
+  }
+  .nav-pill {
+    padding: 4px 10px;
+    font-size: 13px;
   }
 }
