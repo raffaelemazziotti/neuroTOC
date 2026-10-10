@@ -347,10 +347,13 @@ details[open] .article-authors-short {
   font-size: 15px;
   line-height: 1.6;
 }
-.article-keywords {
-  margin: 10px 0 0;
-  color: var(--muted);
-  font-size: 13px;
+.article-tags {
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+.tags-label {
+  color: var(--accent);
+  font-weight: 600;
 }
 .tag-kind {
   font-weight: 600;

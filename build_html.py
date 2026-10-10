@@ -123,6 +123,13 @@ def get_journal_toc(issn):
     return all_articles
 
 
+def add_openalex_tags(article_elem, oa_record):
+    """Store OpenAlex's topic and keywords on an <Article> element."""
+    if oa_record:
+        ET.SubElement(article_elem, "Topic").text = oa_record['topic']
+        ET.SubElement(article_elem, "OpenAlexKeywords").text = '; '.join(oa_record['keywords'])
+
+
 def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
     """Save all TOC data into an XML file."""
     root = ET.Element("JournalsTOC", updated=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
@@ -132,18 +139,7 @@ def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
         neuro_preprints = get_latest_preprints()
     except:
         neuro_preprints = []
-    journal_elem = ET.SubElement(root, "Journal",
-                                 name='Biorxiv',
-                                 issn='0000-0000',
-                                 updated=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    for article in neuro_preprints:
-        article_elem = ET.SubElement(journal_elem, "Article")
-        ET.SubElement(article_elem, "Title").text = article['title']
-        ET.SubElement(article_elem, "Type").text = article['type']
-        ET.SubElement(article_elem, "PublicationDate").text = article['date']
-        ET.SubElement(article_elem, "Authors").text = article['authors']
-        ET.SubElement(article_elem, "DOI").text = article['doi']
-        ET.SubElement(article_elem, "Abstract").text = article['abstract']
+    biorxiv_updated = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     tocs = []
     for _, journal in journals.iterrows():
@@ -153,20 +149,35 @@ def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
 
     # PubMed adds what CrossRef lacks: article types (to drop news, editorials, errata, ...),
     # missing abstracts (Elsevier, Springer), MeSH terms and author keywords.
-    # OpenAlex covers the articles PubMed has not indexed yet (types are coarser there).
-    all_dois = [article['doi'] for _, toc, _ in tocs for article in toc]
+    # OpenAlex covers the articles PubMed has not indexed yet (types are coarser there),
+    # and gives every article, preprints included, a topic and keywords.
+    journal_dois = [article['doi'] for _, toc, _ in tocs for article in toc]
     print('Looking up articles in PubMed')
     try:
-        pubmed = get_pubmed_records(all_dois)
+        pubmed = get_pubmed_records(journal_dois)
     except Exception as e:
         print(f"PubMed lookup failed, continuing without it: {e}")
         pubmed = {}
-    print('Looking up the remaining articles in OpenAlex')
+    print('Looking up articles in OpenAlex')
     try:
-        openalex = get_openalex_records([d for d in all_dois if normalize_doi(d) not in pubmed])
+        openalex = get_openalex_records(journal_dois + [article['doi'] for article in neuro_preprints])
     except Exception as e:
         print(f"OpenAlex lookup failed, continuing without it: {e}")
         openalex = {}
+
+    journal_elem = ET.SubElement(root, "Journal",
+                                 name='Biorxiv',
+                                 issn='0000-0000',
+                                 updated=biorxiv_updated)
+    for article in neuro_preprints:
+        article_elem = ET.SubElement(journal_elem, "Article")
+        ET.SubElement(article_elem, "Title").text = article['title']
+        ET.SubElement(article_elem, "Type").text = article['type']
+        ET.SubElement(article_elem, "PublicationDate").text = article['date']
+        ET.SubElement(article_elem, "Authors").text = article['authors']
+        ET.SubElement(article_elem, "DOI").text = article['doi']
+        ET.SubElement(article_elem, "Abstract").text = article['abstract']
+        add_openalex_tags(article_elem, openalex.get(normalize_doi(article['doi'])))
 
     for journal, toc, updated in tocs:
         journal_elem = ET.SubElement(root, "Journal",
@@ -187,8 +198,9 @@ def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
             ET.SubElement(article_elem, "Authors").text = article['authors']
             ET.SubElement(article_elem, "DOI").text = article['doi']
             ET.SubElement(article_elem, "Abstract").text = abstract
-            if oa_record:
+            if oa_record and not record:
                 ET.SubElement(article_elem, "OpenAlexType").text = oa_record['type']
+            add_openalex_tags(article_elem, oa_record)
             if record:
                 ET.SubElement(article_elem, "PubMedTypes").text = '; '.join(record['types'])
                 ET.SubElement(article_elem, "MeSH").text = '; '.join(record['mesh_major'])
@@ -267,15 +279,16 @@ def classify_article(article, title, filter_words):
 
 
 def article_tags(article):
-    """Major MeSH topics first, then author keywords, without duplicates."""
+    """Major MeSH topics and author keywords from PubMed; OpenAlex keywords when PubMed has none."""
     tags, seen = [], set()
-    for field in ('MeSH', 'Keywords'):
+    fields = ('MeSH', 'Keywords') if (article.findtext('MeSH') or article.findtext('Keywords')) else ('OpenAlexKeywords',)
+    for field in fields:
         for tag in (article.findtext(field) or '').split(';'):
             tag = tag.strip()
             if tag and tag.lower() not in seen:
                 seen.add(tag.lower())
                 tags.append(tag)
-    return tags[:10]
+    return tags[:8]
 
 
 def short_authors(authors, n=3):
@@ -323,7 +336,12 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
             if not has_abstract:
                 abstract = "No abstract available"
             tags = article_tags(article)
-            tags_html = f'<p class="article-keywords">{html.escape(" · ".join(tags))}</p>' if tags else ''
+            topic = article.findtext('Topic') or ''
+            tags_html = ''
+            if topic:
+                tags_html += f'<p class="article-tags"><span class="tags-label">Topic:</span> <span class="article-topic">{html.escape(topic)}</span></p>'
+            if tags:
+                tags_html += f'<p class="article-tags"><span class="tags-label">Keywords:</span> <span class="article-keywords">{html.escape(" · ".join(tags))}</span></p>'
 
             # 'journal-article' is almost every CrossRef item, so only show the other types
             if kind != "research":

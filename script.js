@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // searchable fields + the short author list, which is only highlighted
       const fields = [
         ['.article-title', true], ['.article-authors', true], ['.abstract', true],
-        ['.article-keywords', true], ['.article-authors-short', false]
+        ['.article-topic', true], ['.article-keywords', true], ['.article-authors-short', false]
       ]
         .map(([sel, searchable]) => ({ node: el.querySelector(sel), searchable }))
         .filter(f => f.node)
