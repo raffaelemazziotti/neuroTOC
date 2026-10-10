@@ -7,6 +7,8 @@ import pandas as pd
 import re
 import html
 from preprint_lib import get_latest_preprints
+from pubmed_lib import get_pubmed_records, normalize_doi
+from openalex_lib import get_openalex_records
 
 def save_dataframe_to_html(df: pd.DataFrame, output_file: str = "journals_list.html"):
     """(Optional) Save the DataFrame as a styled HTML table."""
@@ -121,6 +123,13 @@ def get_journal_toc(issn):
     return all_articles
 
 
+def add_openalex_tags(article_elem, oa_record):
+    """Store OpenAlex's topic and keywords on an <Article> element."""
+    if oa_record:
+        ET.SubElement(article_elem, "Topic").text = oa_record['topic']
+        ET.SubElement(article_elem, "OpenAlexKeywords").text = '; '.join(oa_record['keywords'])
+
+
 def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
     """Save all TOC data into an XML file."""
     root = ET.Element("JournalsTOC", updated=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
@@ -130,10 +139,36 @@ def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
         neuro_preprints = get_latest_preprints()
     except:
         neuro_preprints = []
+    biorxiv_updated = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    tocs = []
+    for _, journal in journals.iterrows():
+        print(f"Downloading TOC from: {journal['Journal Name']}")
+        tocs.append((journal, get_journal_toc(journal['ISSN']), datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        time.sleep(0.5)
+
+    # PubMed adds what CrossRef lacks: article types (to drop news, editorials, errata, ...),
+    # missing abstracts (Elsevier, Springer), MeSH terms and author keywords.
+    # OpenAlex covers the articles PubMed has not indexed yet (types are coarser there),
+    # and gives every article, preprints included, a topic and keywords.
+    journal_dois = [article['doi'] for _, toc, _ in tocs for article in toc]
+    print('Looking up articles in PubMed')
+    try:
+        pubmed = get_pubmed_records(journal_dois)
+    except Exception as e:
+        print(f"PubMed lookup failed, continuing without it: {e}")
+        pubmed = {}
+    print('Looking up articles in OpenAlex')
+    try:
+        openalex = get_openalex_records(journal_dois + [article['doi'] for article in neuro_preprints])
+    except Exception as e:
+        print(f"OpenAlex lookup failed, continuing without it: {e}")
+        openalex = {}
+
     journal_elem = ET.SubElement(root, "Journal",
                                  name='Biorxiv',
                                  issn='0000-0000',
-                                 updated=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                                 updated=biorxiv_updated)
     for article in neuro_preprints:
         article_elem = ET.SubElement(journal_elem, "Article")
         ET.SubElement(article_elem, "Title").text = article['title']
@@ -142,23 +177,34 @@ def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
         ET.SubElement(article_elem, "Authors").text = article['authors']
         ET.SubElement(article_elem, "DOI").text = article['doi']
         ET.SubElement(article_elem, "Abstract").text = article['abstract']
+        add_openalex_tags(article_elem, openalex.get(normalize_doi(article['doi'])))
 
-    for _, journal in journals.iterrows():
-        print(f"Downloading TOC from: {journal['Journal Name']}")
+    for journal, toc, updated in tocs:
         journal_elem = ET.SubElement(root, "Journal",
                                      name=journal['Journal Name'],
                                      issn=journal['ISSN'],
-                                     updated=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        toc = get_journal_toc(journal['ISSN'])
+                                     updated=updated)
         for article in toc:
+            record = pubmed.get(normalize_doi(article['doi']))
+            oa_record = openalex.get(normalize_doi(article['doi']))
+            abstract = article['abstract']
+            for source in (record, oa_record):
+                if source and source['abstract'] and abstract == "No preview available":
+                    abstract = source['abstract']
             article_elem = ET.SubElement(journal_elem, "Article")
             ET.SubElement(article_elem, "Title").text = article['title']
             ET.SubElement(article_elem, "Type").text = article['type']
             ET.SubElement(article_elem, "PublicationDate").text = f"{article['pub_date'][0]}/{article['pub_date'][1]}"
             ET.SubElement(article_elem, "Authors").text = article['authors']
             ET.SubElement(article_elem, "DOI").text = article['doi']
-            ET.SubElement(article_elem, "Abstract").text = article['abstract']
-        time.sleep(0.5)
+            ET.SubElement(article_elem, "Abstract").text = abstract
+            if oa_record and not record:
+                ET.SubElement(article_elem, "OpenAlexType").text = oa_record['type']
+            add_openalex_tags(article_elem, oa_record)
+            if record:
+                ET.SubElement(article_elem, "PubMedTypes").text = '; '.join(record['types'])
+                ET.SubElement(article_elem, "MeSH").text = '; '.join(record['mesh_major'])
+                ET.SubElement(article_elem, "Keywords").text = '; '.join(record['keywords'])
 
     tree = ET.ElementTree(root)
     tree.write(filename, encoding="utf-8", xml_declaration=True)
@@ -192,6 +238,59 @@ def format_date(raw):
         return parts[0] if parts[0].isdigit() else (raw or "N/A")
 
 
+# PubMed publication types that are not research articles or reviews
+EXCLUDED_PUBMED_TYPES = {
+    "News", "Newspaper Article", "Comment", "Editorial", "Interview", "Letter",
+    "Published Erratum", "Retraction of Publication", "Retraction Notice", "Expression of Concern",
+    "Biography", "Portrait", "Obituary", "Autobiography", "Personal Narrative", "Lecture",
+    "Congress", "Bibliography", "Directory",
+}
+REVIEW_PUBMED_TYPES = {"Review", "Systematic Review", "Scoping Review"}
+# OpenAlex types used for articles not yet in PubMed
+EXCLUDED_OPENALEX_TYPES = {"erratum", "retraction", "editorial", "letter", "paratext", "book-review"}
+# Journal front matter that has no title prefix to match on
+FRONT_MATTER_TITLES = {
+    "n/a", "editorial board", "editorial board page", "in this issue", "subscribers page",
+    "issue information", "table of contents", "contents", "masthead", "cover", "front matter",
+    "back matter", "information for authors", "instructions for authors",
+}
+
+
+def classify_article(article, title, filter_words):
+    """Return (kind, reason): kind is 'research', 'review' or 'meta-analysis', or None when the
+    article is excluded (news, editorials, comments, errata, ...); reason says which rule excluded it."""
+    if any(title.lower().startswith(w) for w in filter_words):
+        return None, "title"
+    if title.lower().strip(' .') in FRONT_MATTER_TITLES or title.lower().endswith("books in brief"):
+        return None, "front matter"
+    pubmed_types = article.findtext('PubMedTypes')
+    if pubmed_types is not None:
+        types = {t.strip() for t in pubmed_types.split(';') if t.strip()}
+        if types & EXCLUDED_PUBMED_TYPES:
+            return None, "pubmed"
+        if types & REVIEW_PUBMED_TYPES:
+            return "review", None
+        if "Meta-Analysis" in types:
+            return "meta-analysis", None
+        return "research", None
+    if (article.findtext('OpenAlexType') or '') in EXCLUDED_OPENALEX_TYPES:
+        return None, "openalex"
+    return "research", None
+
+
+def article_tags(article):
+    """Major MeSH topics and author keywords from PubMed; OpenAlex keywords when PubMed has none."""
+    tags, seen = [], set()
+    fields = ('MeSH', 'Keywords') if (article.findtext('MeSH') or article.findtext('Keywords')) else ('OpenAlexKeywords',)
+    for field in fields:
+        for tag in (article.findtext(field) or '').split(';'):
+            tag = tag.strip()
+            if tag and tag.lower() not in seen:
+                seen.add(tag.lower())
+                tags.append(tag)
+    return tags[:8]
+
+
 def short_authors(authors, n=3):
     """First n authors followed by 'et al.' when the list is longer."""
     names = [a.strip() for a in authors.split(';') if a.strip()]
@@ -210,6 +309,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     root = tree.getroot()
     update_date = root.attrib.get('updated', 'N/A')
     filter_words = load_filter_words()
+    excluded = {}
 
     journal_nav = ""
     sections_html = ""
@@ -223,19 +323,33 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         n_articles = 0
         for article in journal.findall('Article'):
             title = clean_text(article.findtext('Title')) or "N/A"
-            if any(title.lower().startswith(w) for w in filter_words):
-                continue
             doi = article.findtext('DOI') or "#"
             authors = clean_text(article.findtext('Authors')) or "N/A"
             pub_date = format_date(article.findtext('PublicationDate'))
             art_type = article.findtext('Type') or ""
             abstract = clean_text(article.findtext('Abstract'))
             has_abstract = bool(abstract) and abstract != "No preview available"
+            kind, reason = classify_article(article, title, filter_words)
+            if kind is None:
+                excluded[reason] = excluded.get(reason, 0) + 1
+                continue
             if not has_abstract:
                 abstract = "No abstract available"
+            tags = article_tags(article)
+            topic = article.findtext('Topic') or ''
+            tags_html = ''
+            if topic:
+                tags_html += f'<p class="article-tags"><span class="tags-label">Topic:</span> <span class="article-topic">{html.escape(topic)}</span></p>'
+            if tags:
+                tags_html += f'<p class="article-tags"><span class="tags-label">Keywords:</span> <span class="article-keywords">{html.escape(" · ".join(tags))}</span></p>'
 
             # 'journal-article' is almost every CrossRef item, so only show the other types
-            type_tag = f'<span class="tag">{html.escape(art_type)}</span>' if art_type and art_type != 'journal-article' else ''
+            if kind != "research":
+                type_tag = f'<span class="tag tag-kind">{kind.capitalize()}</span>'
+            elif art_type and art_type != 'journal-article':
+                type_tag = f'<span class="tag">{html.escape(art_type)}</span>'
+            else:
+                type_tag = ''
             abstract_tag = '<span class="tag tag-abstract">Abstract</span>' if has_abstract else ''
 
             articles_html += (
@@ -245,7 +359,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                 f'<span class="article-meta"><span>{html.escape(pub_date)}</span>{type_tag}{abstract_tag}</span>'
                 '</summary><div class="article-body">'
                 f'<p class="article-authors">{html.escape(authors)}</p>'
-                f'<p class="abstract">{html.escape(abstract)}</p></div></details>'
+                f'<p class="abstract">{html.escape(abstract)}</p>{tags_html}</div></details>'
                 f'<a href="{html.escape(doi)}" target="_blank" rel="noopener" class="read-more-link">Read article &#8599;</a></li>\n'
             )
             n_articles += 1
@@ -330,6 +444,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     with open(html_file, 'w', encoding='utf-8') as f:
         f.write(html_content)
 
+    print(f"Excluded articles: {sum(excluded.values())} {excluded}")
     print(f"HTML file saved to {html_file}")
 
 

@@ -347,6 +347,17 @@ details[open] .article-authors-short {
   font-size: 15px;
   line-height: 1.6;
 }
+.article-tags {
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+.tags-label {
+  color: var(--accent);
+  font-weight: 600;
+}
+.tag-kind {
+  font-weight: 600;
+}
 .read-more-link {
   position: absolute;
   top: 14px;
