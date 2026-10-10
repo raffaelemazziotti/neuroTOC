@@ -12,14 +12,17 @@ document.addEventListener("DOMContentLoaded", () => {
     countEl: sec.querySelector('.journal-count'),
     items: Array.from(sec.querySelectorAll('.article-item')).map(el => {
       // searchable fields + the short author list, which is only highlighted
-      const fields = ['.article-title', '.article-authors', '.abstract', '.article-authors-short']
-        .map(sel => el.querySelector(sel))
-        .filter(Boolean)
-        .map(node => ({ node, text: node.textContent }));
+      const fields = [
+        ['.article-title', true], ['.article-authors', true], ['.abstract', true],
+        ['.article-keywords', true], ['.article-authors-short', false]
+      ]
+        .map(([sel, searchable]) => ({ node: el.querySelector(sel), searchable }))
+        .filter(f => f.node)
+        .map(f => ({ ...f, text: f.node.textContent }));
       return {
         el,
         fields,
-        search: fields.slice(0, 3).map(f => f.text).join(' ').toLowerCase(),
+        search: fields.filter(f => f.searchable).map(f => f.text).join(' ').toLowerCase(),
         highlighted: ''
       };
     })

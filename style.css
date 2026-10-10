@@ -347,6 +347,14 @@ details[open] .article-authors-short {
   font-size: 15px;
   line-height: 1.6;
 }
+.article-keywords {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.tag-kind {
+  font-weight: 600;
+}
 .read-more-link {
   position: absolute;
   top: 14px;
