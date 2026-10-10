@@ -2,26 +2,30 @@
         <html>
         <head>
             <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta name="color-scheme" content="dark">
             <title>Journal List</title>
             <style>
-                body { font-family: Arial, sans-serif; padding: 20px; background-color: #f9f9f9; }
-                h2 { text-align: center; color: #4CAF50; }
-                table.dataframe { 
-                    width: 100%; 
+                /* same palette as the site: neutral greys + pastel accents */
+                body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; padding: 20px;
+                        background-color: #171717; color: #e5e5e5; }
+                h2 { text-align: center; color: #e5e5e5; }
+                a { color: #89b4fa; }
+                table.dataframe {
+                    width: 100%;
                     border-collapse: collapse;
                     margin-top: 20px;
                 }
-                th, td { 
-                    border: 1px solid #ddd; 
-                    padding: 10px; 
+                th, td {
+                    border: 1px solid #404040;
+                    padding: 10px;
                     text-align: center;
                 }
                 th {
-                    background-color: #4CAF50;
-                    color: white;
+                    background-color: #262626;
+                    color: #fab387;
                 }
-                tr:nth-child(even) { background-color: #f2f2f2; }
-                tr:hover { background-color: #ddd; }
+                tr:nth-child(even) { background-color: #1f1f1f; }
+                tr:hover { background-color: #2e2e2e; }
                 @media screen and (max-width: 600px) {
                     th, td { padding: 8px; font-size: 14px; }
                 }
