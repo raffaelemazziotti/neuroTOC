@@ -198,7 +198,7 @@ def _change_list(changes, stats, direction):
     return out + "</ul>"
 
 
-def _render_view(view_id, stats, rising, falling, history_since, journal=None, n_baseline=0):
+def _render_view(view_id, stats, rising, falling, history_since, journal=None):
     """One view of the page (all articles, or preprints only). `journal` restricts the search links."""
     n = stats["n_articles"]
     preprints = view_id == "preprints"
@@ -236,20 +236,18 @@ def _render_view(view_id, stats, rising, falling, history_since, journal=None, n
         for key, count in list(stats["keywords"].items())[:40]
     )
 
-    cards = [("Research topics", "Main OpenAlex topic of each article",
+    cards = [("Research topics",
               _bar_list(list(stats["topics"].items())[:12], n, link_fn=lambda t: search(t.lower())))]
     for group, counts in stats["categories"].items():
         rows = sorted(((label, c) for label, c in counts.items() if c), key=lambda r: -r[1])
         patterns = categories.get(group, {})
-        cards.append((group, "Mentioned in title or abstract",
+        cards.append((group,
                       _bar_list(rows, n, link_fn=lambda label, p=patterns: search(search_term(p[label])) if label in p and search_term(p[label]) else None)))
     cards_html = "".join(
-        f'<section class="viz-card"><h2>{html.escape(title)}</h2><p class="viz-sub">{html.escape(sub)}</p>{body}</section>'
-        for title, sub, body in cards
+        f'<section class="viz-card"><h2>{html.escape(title)}</h2>{body}</section>'
+        for title, body in cards
     )
 
-    compared_with = ("the average of the previous " + (f"{n_baseline} periods" if n_baseline > 1 else "period")
-                     if n_baseline else "about a month earlier")
     if rising or falling:
         changes_html = (
             '<div class="change-grid">'
@@ -273,13 +271,11 @@ def _render_view(view_id, stats, rising, falling, history_since, journal=None, n
 
     <section class="viz-card viz-wide">
       <h2>Most frequent keywords</h2>
-      <p class="viz-sub">OpenAlex keywords (the same source for every article, so periods can be compared); spelling variants merged</p>
       <div class="chips">{chips or '<p class="viz-empty">No keywords yet.</p>'}</div>
     </section>
 
     <section class="viz-card viz-wide">
       <h2>Rising and falling</h2>
-      <p class="viz-sub">Share of {'preprints' if preprints else 'articles'} now compared with {compared_with}</p>
       {changes_html}
     </section>
 
@@ -325,9 +321,6 @@ def render_page(views, date, html_file):
     </div>
     {"".join(view_html for _, _, _, view_html in views)}
 
-    <p class="trends-note">Large journals weigh more: Scientific Reports alone publishes about a quarter of the articles.
-      Topics and keywords come from PubMed and OpenAlex and are partly machine-assigned. Categories are searched in titles
-      and abstracts (list in <code>trend_categories.json</code>).</p>
   </main>
   <script>
     // switch between views; the choice is kept in the URL (trends.html#preprints) so it can be linked
@@ -372,5 +365,5 @@ def build_trends(articles, date, html_file="trends.html"):
     ]:
         rising, falling = compute_changes(view_stats, past) if past else ([], [])
         views.append((view_id, label, heading,
-                      _render_view(view_id, view_stats, rising, falling, history_since, journal, len(past))))
+                      _render_view(view_id, view_stats, rising, falling, history_since, journal)))
     render_page(views, date, html_file)

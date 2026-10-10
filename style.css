@@ -568,14 +568,10 @@ button.nav-pill.active {
   font-size: 28px;
   color: var(--text);
 }
-.trends-intro, .trends-note {
+.trends-intro {
   max-width: 760px;
   margin: 0 0 20px;
   color: var(--muted);
-}
-.trends-note {
-  margin-top: 28px;
-  font-size: 13px;
 }
 /* stat tiles: label on top, value below (proportional figures for big numbers) */
 .stat-row {
@@ -617,7 +613,7 @@ button.nav-pill.active {
   margin-bottom: 16px;
 }
 .viz-card h2 {
-  margin: 0;
+  margin: 0 0 12px;
   font-size: 17px;
   color: var(--text);
 }
@@ -625,11 +621,6 @@ button.nav-pill.active {
   margin: 0 0 8px;
   font-size: 14px;
   color: var(--muted);
-}
-.viz-sub {
-  margin: 2px 0 14px;
-  color: var(--muted);
-  font-size: 13px;
 }
 .viz-empty {
   margin: 0;
