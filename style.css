@@ -31,11 +31,12 @@ h2 {
 }
 
 /* Search + Dropdown Container */
-input[type="text"], .custom-select {
+input[type="search"], .custom-select {
   width: 100%;
   margin-bottom: 20px;
 }
-input[type="text"] {
+input[type="search"] {
+  -webkit-appearance: none;
   padding: 15px;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -45,7 +46,7 @@ input[type="text"] {
   font-size: 16px;
   transition: 0.3s ease;
 }
-input[type="text"]:focus {
+input[type="search"]:focus {
   background: rgba(255,255,255,0.2);
   border: 1px solid #88c0d0;
   box-shadow: 0 0 10px rgba(136,192,208,0.5);
@@ -93,6 +94,29 @@ input[type="text"]:focus {
   transform: translateY(-50%) rotate(180deg);
 }
 
+[hidden] {
+  display: none !important;
+}
+
+/* Expand / collapse all */
+.toolbar {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.toolbar button {
+  padding: 8px 14px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.1);
+  color: #eceff4;
+  font-size: 14px;
+  cursor: pointer;
+}
+.toolbar button:hover {
+  background: rgba(255,255,255,0.2);
+}
+
 /* Journal Content & Accordion */
 .journal-content {
   margin-top: 10px;
@@ -100,7 +124,7 @@ input[type="text"]:focus {
   background: rgba(255,255,255,0.03);
   border-radius: 8px;
 }
-.accordion-item {
+.journal-section {
   margin-bottom: 20px;
 }
 .journal-header {
@@ -111,6 +135,11 @@ input[type="text"]:focus {
   user-select: none;
   font-size: 18px;
   color: #81a1c1;
+}
+.journal-count {
+  color: #d8dee9;
+  font-size: 15px;
+  font-weight: normal;
 }
 .toggle-icon {
   margin-right: 10px;
@@ -151,9 +180,28 @@ ul {
   cursor: pointer; /* link is clickable */
 }
 
-/* Hidden abstract is toggled with JS */
+/* Card content: <summary> holds title + metadata, the abstract opens below it */
+.article-item summary {
+  list-style: none;
+  cursor: pointer;
+}
+.article-item summary::-webkit-details-marker {
+  display: none;
+}
+.article-title {
+  display: block;
+  font-weight: bold;
+}
+.article-meta {
+  display: block;
+}
 .abstract {
   margin-top: 10px;
+}
+mark {
+  background: #ebcb8b;
+  color: #2e3440;
+  border-radius: 2px;
 }
 
 /* Floating Home Button, bottom-center */
@@ -193,7 +241,7 @@ ul {
 
 /* Mobile Adjustments */
 @media screen and (max-width: 600px) {
-  input[type="text"], .custom-select select {
+  input[type="search"], .custom-select select {
     font-size: 14px;
     padding: 12px;
   }

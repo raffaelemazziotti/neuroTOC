@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
 import pandas as pd
 import re
-from datetime import datetime
+import html
 from preprint_lib import get_latest_preprints
 
 def save_dataframe_to_html(df: pd.DataFrame, output_file: str = "journals_list.html"):
@@ -60,8 +60,7 @@ def get_journal_info():
 def clean_abstract(raw_abstract):
     """Strip HTML tags from the abstract, fallback to 'No preview available' if missing."""
     if raw_abstract and raw_abstract != 'N/A':
-        soup = BeautifulSoup(raw_abstract, 'html.parser')
-        return soup.get_text(strip=True)
+        return clean_text(raw_abstract)
     return "No preview available"
 
 def get_journal_toc(issn):
@@ -166,93 +165,84 @@ def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
     print(f"TOC with update dates saved to {filename}")
 
 
+def clean_text(raw):
+    """Strip HTML tags (e.g. <i> in titles) and collapse whitespace."""
+    if not raw:
+        return ""
+    return " ".join(BeautifulSoup(raw, "html.parser").get_text().split())
+
+
+def load_filter_words(filename="article_filter_words"):
+    """Titles starting with one of these prefixes (corrections, errata, ...) are skipped."""
+    try:
+        with open(filename, encoding="utf-8") as f:
+            return [line.strip().lower() for line in f if line.strip()]
+    except FileNotFoundError:
+        return []
+
+
 def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.html"):
-    """Generate the final HTML file with:
-       - All Journals (accordion)
-       - Individual Journal sections (dropdown)
-       - Searching (data-title, data-abstract, data-authors)
-       - Clicking anywhere toggles abstract, except on Read More link
-       - Home button pinned bottom-center
-       - localStorage used in script.js
+    """Generate the final HTML file.
+       - Every article is rendered once, grouped in one collapsible section per journal
+       - The dropdown and the search filter those sections client-side (script.js)
+       - All text is HTML-escaped
     """
-    import xml.etree.ElementTree as ET
     tree = ET.parse(xml_file)
     root = tree.getroot()
     update_date = root.attrib.get('updated', 'N/A')
+    filter_words = load_filter_words()
 
-    dropdown_options = '<option value="All_Journals">All Journals</option>'
-    all_journals_html = "<h2>All Journals</h2>"
-    individual_journals_html = ""
+    dropdown_options = ""
+    sections_html = ""
+    total_articles = 0
 
     for journal in root.findall('Journal'):
         journal_name = journal.get('name')
-        journal_id = journal_name.replace(" ", "_").lower()
-        dropdown_options += f'<option value="{journal_id}">{journal_name}</option>'
+        journal_id = re.sub(r'[^a-z0-9]+', '_', journal_name.lower()).strip('_')
 
         articles_html = ""
+        n_articles = 0
         for article in journal.findall('Article'):
-            title_node = article.find('Title')
-            doi_node = article.find('DOI')
-            authors_node = article.find('Authors')
-            pub_date_node = article.find('PublicationDate')
-            type_node = article.find('Type')
-            abstract_node = article.find('Abstract')
+            title = clean_text(article.findtext('Title')) or "N/A"
+            if any(title.lower().startswith(w) for w in filter_words):
+                continue
+            doi = article.findtext('DOI') or "#"
+            authors = clean_text(article.findtext('Authors')) or "N/A"
+            pub_date = article.findtext('PublicationDate') or "N/A"
+            art_type = article.findtext('Type') or "N/A"
+            abstract = clean_text(article.findtext('Abstract'))
+            if not abstract or abstract == "No preview available":
+                abstract = "No abstract available"
 
-            title = title_node.text if title_node is not None else "N/A"
-            doi = doi_node.text if doi_node is not None else "#"
-            authors = authors_node.text if authors_node is not None else "N/A"
-            pub_date = pub_date_node.text if pub_date_node is not None else "N/A"
-            art_type = type_node.text if type_node is not None else "N/A"
-            abstract = abstract_node.text if abstract_node is not None else "No preview available"
+            articles_html += (
+                '<li class="article-item"><details><summary>'
+                f'<span class="article-title">{html.escape(title)}</span>'
+                f'<span class="article-meta"><em>Authors:</em> <span class="article-authors">{html.escape(authors)}</span></span>'
+                f'<span class="article-meta"><em>Published:</em> {html.escape(pub_date)} ({html.escape(art_type)})</span>'
+                f'</summary><p class="abstract">{html.escape(abstract)}</p></details>'
+                f'<a href="{html.escape(doi)}" target="_blank" rel="noopener" class="read-more-link">Read More</a></li>\n'
+            )
+            n_articles += 1
 
-            # data- attrs for searching
-            articles_html += f"""
-<li class="article-item"
-    data-title="{title.lower()}"
-    data-abstract="{abstract.lower()}"
-    data-authors="{authors.lower() if authors else None}">
-
-  <strong>{title}</strong><br>
-  <em>Authors:</em> {authors}<br>
-  <em>Published:</em> {pub_date} ({art_type})<br>
-
-  <!-- 'Read More' link (works on click) -->
-  <a href="{doi}" target="_blank" class="read-more-link">Read More</a>
-
-  <!-- Hidden abstract initially -->
-  <p class="abstract" style="display:none;">
-    {abstract}
-  </p>
-</li>
-"""
-
-        accordion_id = "acc_" + journal_id
-        all_journals_html += f"""
-<div class="accordion-item">
-  <h3 class="journal-header" data-toggle="{accordion_id}">
-    <span class="toggle-icon">-</span> {journal_name}
+        total_articles += n_articles
+        dropdown_options += f'<option value="{journal_id}">{html.escape(journal_name)} ({n_articles})</option>'
+        sections_html += f"""
+<section class="journal-section" id="{journal_id}">
+  <h3 class="journal-header" role="button" tabindex="0" aria-expanded="true">
+    <span class="toggle-icon">-</span> {html.escape(journal_name)} <span class="journal-count">({n_articles})</span>
   </h3>
-  <ul id="{accordion_id}" style="display: block;">
-    {articles_html}
-  </ul>
-</div>
+  <ul class="article-list">
+{articles_html}  </ul>
+</section>
 """
 
-        individual_journals_html += f'''
-<div id="{journal_id}" class="journal-content" style="display:none;">
-  <ul>{articles_html}</ul>
-</div>
-'''
-
-    html_content = f"""
-<html>
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta 
-    name="viewport" 
-    content="width=device-width, initial-scale=1.0, user-scalable=no, shrink-to-fit=no"
-  >
-  <link 
-    rel="stylesheet" 
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link
+    rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
   />
   <link rel="icon" type="image/svg+xml" href="logo.svg">
@@ -260,29 +250,33 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
   <link rel="stylesheet" type="text/css" href="style.css">
   <script src="script.js" defer></script>
 </head>
-<body data-updated="{update_date}">
+<body data-updated="{html.escape(update_date)}">
   <h1>NeuroTOC</h1>
-  <h2 style="text-align: center;">Updated: {update_date.split(' ')[0]}</h2>
+  <h2 style="text-align: center;">Updated: {html.escape(update_date.split(' ')[0])}</h2>
 
-  <input type="text" id="searchInput" placeholder="Search for articles...">
-  <p id="articleCount" class="article-count">Showing 0 articles</p>
+  <input type="search" id="searchInput" placeholder="Search titles, authors, abstracts..." aria-label="Search articles">
+  <p id="articleCount" class="article-count">Showing {total_articles} articles</p>
 
   <div class="custom-select">
-    <select id="journalSelect">
+    <select id="journalSelect" aria-label="Journal">
+      <option value="All_Journals">All Journals ({total_articles})</option>
       {dropdown_options}
     </select>
   </div>
 
-  <div id="All_Journals" class="journal-content" style="display:block;">
-    {all_journals_html}
+  <div class="toolbar">
+    <button type="button" id="expandAll">Expand all</button>
+    <button type="button" id="collapseAll">Collapse all</button>
   </div>
 
-  {individual_journals_html}
+  <div id="journals" class="journal-content">
+    {sections_html}
+  </div>
 
   <!-- Centered home button at bottom -->
-  <button onclick="scrollToTop()" class="home-button">
-  <i class="fas fa-home"></i>
-</button>
+  <button onclick="scrollToTop()" class="home-button" aria-label="Back to top">
+    <i class="fas fa-home"></i>
+  </button>
 </body>
 </html>
 """
@@ -290,7 +284,6 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         f.write(html_content)
 
     print(f"HTML file saved to {html_file}")
-
 
 
 if __name__ == "__main__":
