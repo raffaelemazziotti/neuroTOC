@@ -5,18 +5,21 @@ on:
     - cron: '0 0 * * 1'  # Every Monday
   workflow_dispatch:      #  manual triggering
 
+permissions:
+  contents: write
+
 jobs:
   update-toc:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.10'
+          python-version: '3.12'
 
       - name: Install Dependencies
         run: |
@@ -25,16 +28,13 @@ jobs:
 
       - name: Run XML and HTML Generation Scripts
         run: |
-          python main.py  
-      - name: Commit changes
+          python main.py
+
+      - name: Commit and push changes
         run: |
           git config --local user.name 'raffaelemazziotti'
           git config --local user.email "${{ secrets.MY_EMAIL }}"
-          git add -f all_journals_toc.xml index.html
-          git commit -m "Automated monthly update"
-          git push --force
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.PERSONAL_TOKEN }}
-          branch: ${{ github.ref }}
+          git add -f all_journals_toc.xml index.html journals_list.html
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "Automated weekly update"
+          git push
