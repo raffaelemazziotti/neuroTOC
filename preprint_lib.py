@@ -3,10 +3,11 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 import time
 
-def get_date_range():
-    today = date.today()
-    one_month_ago = today - relativedelta(weeks=1)
-    return f"{one_month_ago.strftime('%Y-%m-%d')}/{today.strftime('%Y-%m-%d')}"
+def get_date_range(end_date=None):
+    """The 7 days before end_date (default: today), as bioRxiv's API expects them."""
+    today = end_date.date() if end_date else date.today()
+    one_week_ago = today - relativedelta(weeks=1)
+    return f"{one_week_ago.strftime('%Y-%m-%d')}/{today.strftime('%Y-%m-%d')}"
 
 def doi2url(doi: str) -> str:
     if doi.startswith("http://") or doi.startswith("https://"):
@@ -14,8 +15,8 @@ def doi2url(doi: str) -> str:
     return f"https://doi.org/{doi}"
 
 
-def get_latest_preprints():
-    interval = get_date_range()
+def get_latest_preprints(end_date=None):
+    interval = get_date_range(end_date)
     cursor = 0
     format = 'json'
     data_continue = True

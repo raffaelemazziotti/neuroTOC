@@ -6,9 +6,27 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import re
 import html
+import os
 from preprint_lib import get_latest_preprints
 from pubmed_lib import get_pubmed_records, normalize_doi
 from openalex_lib import get_openalex_records
+from trends_lib import build_trends
+
+def load_env_file(filename=".env"):
+    """Local runs: read API keys (OPENALEX_API_KEY, NCBI_API_KEY) from a .env file, which git ignores.
+    Variables already set (e.g. GitHub secrets in the weekly job) take precedence."""
+    if not os.path.exists(filename):
+        return
+    with open(filename, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, value = line.split("=", 1)
+                os.environ.setdefault(key.strip(), value.strip().strip("'\""))
+
+
+load_env_file()
+
 
 def save_dataframe_to_html(df: pd.DataFrame, output_file: str = "journals_list.html"):
     """(Optional) Save the DataFrame as a styled HTML table."""
@@ -18,26 +36,30 @@ def save_dataframe_to_html(df: pd.DataFrame, output_file: str = "journals_list.h
         <html>
         <head>
             <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta name="color-scheme" content="dark">
             <title>Journal List</title>
             <style>
-                body {{ font-family: Arial, sans-serif; padding: 20px; background-color: #f9f9f9; }}
-                h2 {{ text-align: center; color: #4CAF50; }}
-                table.dataframe {{ 
-                    width: 100%; 
+                /* same palette as the site: neutral greys + pastel accents */
+                body {{ font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; padding: 20px;
+                        background-color: #171717; color: #e5e5e5; }}
+                h2 {{ text-align: center; color: #e5e5e5; }}
+                a {{ color: #89b4fa; }}
+                table.dataframe {{
+                    width: 100%;
                     border-collapse: collapse;
                     margin-top: 20px;
                 }}
-                th, td {{ 
-                    border: 1px solid #ddd; 
-                    padding: 10px; 
+                th, td {{
+                    border: 1px solid #404040;
+                    padding: 10px;
                     text-align: center;
                 }}
                 th {{
-                    background-color: #4CAF50;
-                    color: white;
+                    background-color: #262626;
+                    color: #fab387;
                 }}
-                tr:nth-child(even) {{ background-color: #f2f2f2; }}
-                tr:hover {{ background-color: #ddd; }}
+                tr:nth-child(even) {{ background-color: #1f1f1f; }}
+                tr:hover {{ background-color: #2e2e2e; }}
                 @media screen and (max-width: 600px) {{
                     th, td {{ padding: 8px; font-size: 14px; }}
                 }}
@@ -65,13 +87,18 @@ def clean_abstract(raw_abstract):
         return clean_text(raw_abstract)
     return "No preview available"
 
-def get_journal_toc(issn):
-    """Fetch all articles from the last 30 days for a given journal (ISSN) using CrossRef API with pagination."""
-    month_start = (datetime.utcnow() - timedelta(days=30)).strftime('%Y-%m-%d')
+def get_journal_toc(issn, end_date=None):
+    """Fetch all articles from the 30 days before end_date (default: now) for a given journal (ISSN)
+    using CrossRef API with pagination."""
+    end = end_date or datetime.utcnow()
+    month_start = (end - timedelta(days=30)).strftime('%Y-%m-%d')
+    date_filter = f"from-pub-date:{month_start}"
+    if end_date:
+        date_filter += f",until-pub-date:{end_date.strftime('%Y-%m-%d')}"
 
     url = f"https://api.crossref.org/journals/{issn}/works"
     params = {
-        "filter": f"from-pub-date:{month_start}",
+        "filter": date_filter,
         "rows": 100,
         "cursor": "*"
     }
@@ -131,21 +158,22 @@ def add_openalex_tags(article_elem, oa_record):
         ET.SubElement(article_elem, "TopicFields").text = '; '.join(oa_record['topic_fields'])
 
 
-def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
-    """Save all TOC data into an XML file."""
-    root = ET.Element("JournalsTOC", updated=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    # TODO insert preprints
+def save_all_toc_to_xml(journals, filename="all_journals_toc.xml", end_date=None):
+    """Save all TOC data into an XML file. end_date (a datetime) downloads an earlier period instead of
+    the latest one; backfill_trends.py uses it to rebuild the history of the trends page."""
+    updated = (end_date or datetime.now()).strftime('%Y-%m-%d %H:%M:%S')
+    root = ET.Element("JournalsTOC", updated=updated)
     print('Downloading TOC from: Biorxiv')
     try:
-        neuro_preprints = get_latest_preprints()
+        neuro_preprints = get_latest_preprints(end_date)
     except:
         neuro_preprints = []
-    biorxiv_updated = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    biorxiv_updated = updated
 
     tocs = []
     for _, journal in journals.iterrows():
         print(f"Downloading TOC from: {journal['Journal Name']}")
-        tocs.append((journal, get_journal_toc(journal['ISSN']), datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        tocs.append((journal, get_journal_toc(journal['ISSN'], end_date), updated if end_date else datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
         time.sleep(0.5)
 
     # PubMed adds what CrossRef lacks: article types (to drop news, editorials, errata, ...),
@@ -163,8 +191,14 @@ def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
     try:
         openalex = get_openalex_records(journal_dois + [article['doi'] for article in neuro_preprints])
     except Exception as e:
-        print(f"OpenAlex lookup failed, continuing without it: {e}")
+        print(f"OpenAlex lookup failed: {e}")
         openalex = {}
+    # Topics, keywords and the neuroscience filter depend on OpenAlex: without it the page would silently
+    # lose them and general journals would come back unfiltered, so stop instead of publishing that
+    found = sum(normalize_doi(d) in openalex for d in journal_dois)
+    if journal_dois and found < 0.5 * len(journal_dois):
+        raise RuntimeError(f"OpenAlex returned data for only {found} of {len(journal_dois)} articles; "
+                           "not publishing. Set OPENALEX_API_KEY or retry later.")
 
     journal_elem = ET.SubElement(root, "Journal",
                                  name='Biorxiv',
@@ -336,7 +370,7 @@ def short_authors(authors, n=3):
     return '; '.join(names[:n]) + ' et al.'
 
 
-def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.html"):
+def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.html", trends_file="trends.html"):
     """Generate the final HTML file.
        - Every article is rendered once, grouped in one collapsible section per journal
        - General journals keep only their neuroscience articles (is_neuroscience)
@@ -352,12 +386,13 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     journal_nav = ""
     sections_html = ""
     total_articles = 0
+    page_articles = []  # what the trends page counts: exactly the articles shown
 
     for journal in root.findall('Journal'):
         journal_name = journal.get('name')
         journal_id = re.sub(r'[^a-z0-9]+', '_', journal_name.lower()).strip('_')
 
-        cards = []  # (card html, is neuroscience per OpenAlex or None, neuroscience word in title)
+        cards = []  # (card html, is neuroscience per OpenAlex or None, neuroscience word in title, article info)
         for article in journal.findall('Article'):
             title = clean_text(article.findtext('Title')) or "N/A"
             doi = article.findtext('DOI') or "#"
@@ -399,20 +434,25 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                 f'<p class="abstract">{html.escape(abstract)}</p>{tags_html}</div></details>'
                 f'<a href="{html.escape(doi)}" target="_blank" rel="noopener" class="read-more-link">Read article &#8599;</a></li>\n',
                 is_neuroscience(article, title),
-                neuro_title(title)
+                neuro_title(title),
+                {'title': title, 'abstract': abstract if has_abstract else '', 'has_abstract': has_abstract,
+                 'topic': topic, 'tags': tags, 'journal': journal_name, 'kind': kind,
+                 # one keyword source for every article, so trends compare like with like across periods
+                 'oa_keywords': [k.strip() for k in (article.findtext('OpenAlexKeywords') or '').split(';') if k.strip()]}
             ))
 
         # General journals keep only their neuroscience articles (bioRxiv is already the neuroscience category)
-        judged = [neuro for _, neuro, _ in cards if neuro is not None]
+        judged = [neuro for _, neuro, _, _ in cards if neuro is not None]
         neuro_share = sum(judged) / len(judged) if judged else 1
         if journal.get('issn') != '0000-0000' and neuro_share < NEURO_JOURNAL_SHARE:
             # articles OpenAlex does not know yet are judged on their title alone
-            kept = [card for card, neuro, title_hit in cards if neuro or (neuro is None and title_hit)]
+            kept = [(card, info) for card, neuro, title_hit, info in cards if neuro or (neuro is None and title_hit)]
             excluded['off-topic'] = excluded.get('off-topic', 0) + len(cards) - len(kept)
             print(f"General journal: {journal_name} ({neuro_share:.0%} neuroscience), kept {len(kept)} of {len(cards)}")
         else:
-            kept = [card for card, _, _ in cards]
-        articles_html = "".join(kept)
+            kept = [(card, info) for card, _, _, info in cards]
+        articles_html = "".join(card for card, _ in kept)
+        page_articles += [info for _, info in kept]
         n_articles = len(kept)
 
         total_articles += n_articles
@@ -438,7 +478,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="dark light">
+  <meta name="color-scheme" content="dark">
   <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>NeuroTOC</title>
   <link rel="stylesheet" type="text/css" href="style.css">
@@ -452,6 +492,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         <span class="brand-text">NeuroTOC</span>
       </a>
       <span class="updated">Updated {html.escape(update_date.split(' ')[0])}</span>
+      <nav class="topnav"><a class="nav-pill active" href="index.html" aria-current="page">Articles</a><a class="nav-pill" href="trends.html">Trends</a></nav>
       <input type="search" id="searchInput" placeholder="Search titles, authors, abstracts..." aria-label="Search articles">
       <button type="button" id="journalsButton" class="journals-button" aria-controls="sidebar" aria-expanded="false">
         <span id="journalsButtonLabel">All journals</span> &#9662;
@@ -497,6 +538,8 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
 
     print(f"Excluded articles: {sum(excluded.values())} {excluded}")
     print(f"HTML file saved to {html_file}")
+
+    build_trends(page_articles, update_date.split(' ')[0], trends_file)
 
 
 if __name__ == "__main__":

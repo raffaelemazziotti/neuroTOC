@@ -37,8 +37,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const currentUpdatedDate = body.getAttribute("data-updated") || "N/A";
   const savedUpdatedDate = localStorage.getItem("siteUpdatedDate");
 
+  // A link from the trends page (index.html?q=microglia) opens a search across all journals
+  // (&journal=biorxiv limits it to one journal)
+  const params = new URLSearchParams(location.search);
+  const linkedQuery = params.get('q');
+  if (linkedQuery !== null) {
+    localStorage.setItem("searchWord", linkedQuery);
+    localStorage.setItem("selectedJournal", params.get('journal') || "All_Journals");
+    localStorage.removeItem("scrollPosition");
+  }
+
   // Check if site is updated or not
-  if (savedUpdatedDate === currentUpdatedDate) {
+  if (savedUpdatedDate === currentUpdatedDate || linkedQuery !== null) {
       restoreSearchWord();
       restoreJournalSelect();
       restoreAccordionState();
@@ -50,6 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
       localStorage.removeItem("selectedJournal");
       localStorage.removeItem("searchWord");
   }
+  if (linkedQuery !== null) localStorage.setItem("siteUpdatedDate", currentUpdatedDate);
 
   // Setup input listeners
   document.getElementById('searchInput').addEventListener('input', onSearchChange);

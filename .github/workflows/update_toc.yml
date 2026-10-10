@@ -27,6 +27,10 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run XML and HTML Generation Scripts
+        env:
+          # optional free keys with their own budgets (the anonymous ones are shared by everyone on GitHub's IPs)
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX }}
+          NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
         run: |
           python main.py
 
@@ -34,7 +38,7 @@ jobs:
         run: |
           git config --local user.name 'raffaelemazziotti'
           git config --local user.email "${{ secrets.MY_EMAIL }}"
-          git add -f all_journals_toc.xml index.html journals_list.html
+          git add -f all_journals_toc.xml index.html journals_list.html trends.html trends/
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "Automated weekly update"
           git push

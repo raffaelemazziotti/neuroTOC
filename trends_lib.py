@@ -1,0 +1,674 @@
+"""Trends page: what this month's articles are about (topics, keywords, organisms, methods, ...).
+
+Counts are numbers of articles. Every run also saves a small snapshot in trends/<date>.json;
+once snapshots from about a month earlier exist, the page compares against them ("Rising / falling").
+"""
+import glob
+import html
+import json
+import math
+import os
+import re
+from datetime import datetime
+from urllib.parse import quote
+
+TRENDS_DIR = "trends"
+CATEGORIES_FILE = "trend_categories.json"
+# keywords that describe nearly every article and say nothing about a trend
+GENERIC_KEYWORDS = {
+    "brain", "neuron", "human", "animal", "mouse", "mice", "rat", "male", "female", "adult", "aged",
+    "middle aged", "child", "adolescent", "young adult", "infant", "aged, 80 and over", "rodent",
+    "neuroscience", "cell", "disease", "animals, genetically modified", "mice, inbred c57bl", "disease model, animal",
+    "rats, sprague-dawley", "mice, knockout", "cell line", "cells, cultured", "risk factor", "prognosis", "treatment",
+}
+# rising / falling: compare with snapshots at least this old (the article window is 30 days,
+# so younger snapshots mostly contain the same articles)
+BASELINE_MIN_DAYS, BASELINE_MAX_DAYS = 25, 120
+# an item must reach this many articles (and this share of all articles) in one of the periods to be listed:
+# below that, changes are mostly chance
+MIN_COUNT_FOR_CHANGE = 8
+MIN_SHARE_FOR_CHANGE = 0.005
+# keywords / topics stored per snapshot; one missing from a full list is counted at the list's smallest count
+KEYWORDS_STORED = 2000
+TOPICS_STORED = 1000
+# per journal (journal profiles on the trends page) smaller lists are enough
+JOURNAL_KEYWORDS_STORED = 100
+JOURNAL_TOPICS_STORED = 50
+# list lengths of older snapshots, which kept only the top 300 keywords and top 100 topics
+FULL_LIST_SIZES = {"keyword": (300, KEYWORDS_STORED), "topic": (100, TOPICS_STORED)}
+
+
+def keyword_key(keyword):
+    """Merge spelling variants: "Alzheimer Disease" / "Alzheimer's disease" -> "alzheimer", "Neurons" -> "neuron".
+    The key is also a valid search query, since the site's search matches substrings."""
+    k = keyword.lower().replace("’", "'").replace("'s", "")
+    k = re.sub(r"\bdiseases?\b", " ", k)
+    words = []
+    for w in re.split(r"\s+", k.strip(" .,;:-")):
+        if len(w) > 4 and w.endswith("s") and not w.endswith(("ss", "is", "us")):
+            w = w[:-1]
+        words.append(w)
+    return " ".join(w for w in words if w)
+
+
+def load_categories(filename=CATEGORIES_FILE):
+    with open(filename, encoding="utf-8") as f:
+        data = json.load(f)
+    return {group: {label: re.compile(rx, re.I) for label, rx in entries.items()}
+            for group, entries in data.items() if not group.startswith("_")}
+
+
+def search_term(pattern):
+    """A plain search query for a category, when its first alternative is plain text (e.g. 'hippocamp')."""
+    first = pattern.pattern.split("|")[0].replace("\\b", "").replace("s?", "")
+    return first if re.fullmatch(r"[a-z][a-z' -]*", first) else None
+
+
+def compute_stats(articles, date, keyword_cap=KEYWORDS_STORED, topic_cap=TOPICS_STORED, per_journal=False):
+    """articles: dicts with title, abstract, topic, tags, journal, kind, has_abstract (the articles shown on the page).
+    per_journal adds the same counts for each journal (smaller lists), for the journal profiles."""
+    categories = load_categories()
+    generic = {keyword_key(k) for k in GENERIC_KEYWORDS}
+    topics, keywords, labels = {}, {}, {}
+    category_counts = {group: {label: 0 for label in entries} for group, entries in categories.items()}
+    for a in articles:
+        if a["topic"]:
+            topics[a["topic"]] = topics.get(a["topic"], 0) + 1
+        for key in {keyword_key(t) for t in a["oa_keywords"]} - generic - {""}:
+            keywords[key] = keywords.get(key, 0) + 1
+        for tag in a["oa_keywords"]:
+            labels.setdefault(keyword_key(tag), {}).setdefault(tag, 0)
+            labels[keyword_key(tag)][tag] += 1
+        text = f"{a['title']} {a['abstract']}"
+        for group, entries in categories.items():
+            for label, rx in entries.items():
+                if rx.search(text):
+                    category_counts[group][label] += 1
+    # keywords of a single article never matter for trends: keep those in 2+ articles ("keyword_floor": a missing
+    # keyword had at most 1)
+    top_keywords = dict(sorted(((k, v) for k, v in keywords.items() if v >= 2), key=lambda kv: -kv[1])[:keyword_cap])
+    stats = {
+        "date": date,
+        "n_articles": len(articles),
+        "n_sources": len({a["journal"] for a in articles}),
+        "n_reviews": sum(a["kind"] in ("review", "meta-analysis") for a in articles),
+        "n_preprints": sum(a["journal"] == "Biorxiv" for a in articles),
+        "n_with_abstract": sum(a["has_abstract"] for a in articles),
+        "topics": dict(sorted(topics.items(), key=lambda kv: -kv[1])[:topic_cap]),
+        "keywords": top_keywords,
+        "keyword_floor": 1,
+        # the most common spelling of each merged keyword, for display (only when it differs from the key)
+        "keyword_labels": {k: label for k in top_keywords
+                           if (label := max(labels[k].items(), key=lambda kv: kv[1])[0]) != k},
+        "categories": category_counts,
+    }
+    if per_journal:
+        stats["journals"] = {}
+        for journal in sorted({a["journal"] for a in articles}):
+            j = compute_stats([a for a in articles if a["journal"] == journal], date,
+                              JOURNAL_KEYWORDS_STORED, JOURNAL_TOPICS_STORED)
+            j["categories"] = {g: {k: v for k, v in c.items() if v} for g, c in j["categories"].items()}
+            stats["journals"][journal] = {k: j[k] for k in
+                                          ("n_articles", "n_reviews", "n_with_abstract", "topics", "keywords", "categories")}
+    return stats
+
+
+def save_snapshot(stats):
+    os.makedirs(TRENDS_DIR, exist_ok=True)
+    with open(os.path.join(TRENDS_DIR, f"{stats['date']}.json"), "w", encoding="utf-8") as f:
+        # compact: a new snapshot is committed every week
+        json.dump(stats, f, ensure_ascii=False, separators=(",", ":"))
+
+
+def load_baseline(date):
+    """Snapshots 25-120 days older than `date`."""
+    now = datetime.strptime(date, "%Y-%m-%d")
+    snapshots, oldest = [], None
+    for path in sorted(glob.glob(os.path.join(TRENDS_DIR, "*.json"))):
+        try:
+            d = datetime.strptime(os.path.basename(path)[:-5], "%Y-%m-%d")
+        except ValueError:
+            continue
+        oldest = oldest or d
+        if BASELINE_MIN_DAYS <= (now - d).days <= BASELINE_MAX_DAYS:
+            with open(path, encoding="utf-8") as f:
+                snapshots.append(json.load(f))
+    return snapshots, oldest
+
+
+def compute_changes(stats, baseline):
+    """Share of articles now vs the average share in the baseline snapshots, for keywords, topics and categories."""
+    def floors(s):
+        # a keyword or topic missing from a cut-off list had at most the smallest stored count, not zero
+        # (counting it as zero invents huge rises and falls)
+        out = {}
+        for kind, counts in (("keyword", s["keywords"]), ("topic", s["topics"])):
+            out[kind] = min(counts.values()) if len(counts) in FULL_LIST_SIZES[kind] else 0
+        if "keyword_floor" in s:
+            out["keyword"] = max(out["keyword"], s["keyword_floor"])
+        return out
+
+    def items(s):
+        out = {("keyword", k): v for k, v in s["keywords"].items()}
+        out.update({("topic", k): v for k, v in s["topics"].items()})
+        for group, entries in s["categories"].items():
+            out.update({(group, k): v for k, v in entries.items()})
+        return out
+
+    now, now_floor = items(stats), floors(stats)
+    past = [(items(b), b["n_articles"], floors(b)) for b in baseline]
+
+    def get(counts, key, floor):
+        return counts.get(key, floor.get(key[0], 0))
+
+    min_count = max(MIN_COUNT_FOR_CHANGE, MIN_SHARE_FOR_CHANGE * stats["n_articles"])
+    changes = []
+    for key in set(now) | {k for p, _, _ in past for k in p}:
+        count = get(now, key, now_floor)
+        past_count = sum(get(p, key, f) for p, _, f in past) / len(past)
+        if max(count, past_count) < min_count:
+            continue
+        share = count / stats["n_articles"]
+        past_share = sum(get(p, key, f) / n for p, n, f in past) / len(past)
+        # +1 smoothing so a jump from 0 to 8 articles is not "infinitely" rising
+        ratio = (share * stats["n_articles"] + 1) / (past_share * stats["n_articles"] + 1)
+        changes.append((math.log(ratio), key, count, past_share))
+    changes.sort()
+    falling = [c for c in changes if c[0] < 0][:8]
+    rising = [c for c in reversed(changes) if c[0] > 0][:8]
+    return rising, falling
+
+
+def _bar_list(rows, total, link_fn=None):
+    """rows: [(label, count)] -> horizontal bars, value written at the tip of each bar."""
+    if not rows:
+        return '<p class="viz-empty">No data yet.</p>'
+    top = max(count for _, count in rows) or 1
+    out = '<ul class="bar-list">'
+    for label, count in rows:
+        share = count / total if total else 0
+        href = link_fn(label) if link_fn else None
+        name = html.escape(label)
+        name_html = f'<a href="{html.escape(href)}">{name}</a>' if href else name
+        out += (
+            f'<li class="bar-row" title="{name}: {count} articles ({share:.1%})">'
+            f'<span class="bar-label">{name_html}</span>'
+            f'<span class="bar-track"><span class="bar" style="width:{max(count / top * 100, 1):.1f}%"></span></span>'
+            f'<span class="bar-value">{count}<span class="bar-share"> · {share:.0%}</span></span></li>'
+        )
+    return out + "</ul>"
+
+
+def _change_list(changes, stats, direction):
+    if not changes:
+        return '<p class="viz-empty">Nothing stands out.</p>'
+    biggest = max(abs(c[0]) for c in changes) or 1
+    out = f'<ul class="bar-list change-list {direction}">'
+    for log_ratio, (kind, key), count, past_share in changes:
+        label = stats["keyword_labels"].get(key, key) if kind == "keyword" else key
+        pct = (math.exp(log_ratio) - 1) * 100
+        kind_label = "" if kind == "keyword" else f'<span class="change-kind">{html.escape(kind)}</span>'
+        out += (
+            f'<li class="bar-row" title="{html.escape(label)}: {count} article{"" if count == 1 else "s"} now '
+            f'({count / stats["n_articles"]:.1%}), {past_share:.1%} before">'
+            f'<span class="bar-label">{html.escape(label)}{kind_label}</span>'
+            f'<span class="bar-track"><span class="bar" style="width:{abs(log_ratio) / biggest * 100:.1f}%"></span></span>'
+            f'<span class="bar-value">{pct:+.0f}%</span></li>'
+        )
+    return out + "</ul>"
+
+
+def _render_view(view_id, stats, rising, falling, history_since, journal=None):
+    """One view of the page (all articles, or preprints only). `journal` restricts the search links."""
+    n = stats["n_articles"]
+    preprints = view_id == "preprints"
+
+    def search(q):
+        return f"index.html?q={quote(q)}" + (f"&journal={journal}" if journal else "")
+
+    categories = load_categories()
+    if preprints:
+        tiles = [
+            ("Preprints", f"{n:,}"),
+            ("Period", "last 7 days"),
+            ("With abstract", f"{stats['n_with_abstract'] / n:.0%}" if n else "–"),
+        ]
+        intro = (f"What the {n:,} neuroscience preprints posted on bioRxiv in the last 7 days are about: the newest work, "
+                 "before peer review. Counts are numbers of preprints; percentages are shares of all preprints.")
+    else:
+        tiles = [
+            ("Articles", f"{n:,}"),
+            ("Journals + bioRxiv", f"{stats['n_sources']}"),
+            ("Preprints", f"{stats['n_preprints']:,}"),
+            ("Reviews", f"{stats['n_reviews']:,}"),
+            ("With abstract", f"{stats['n_with_abstract'] / n:.0%}" if n else "–"),
+        ]
+        intro = (f"What the {n:,} articles published in the last 30 days are about. Counts are numbers of articles; "
+                 "percentages are shares of all articles.")
+    tiles_html = "".join(
+        f'<div class="stat-tile"><span class="stat-label">{label}</span><span class="stat-value">{value}</span></div>'
+        for label, value in tiles
+    )
+
+    chips = "".join(
+        f'<a class="chip" href="{html.escape(search(key))}">{html.escape(stats["keyword_labels"].get(key, key))}'
+        f'<span class="chip-count">{count}</span></a>'
+        for key, count in list(stats["keywords"].items())[:40]
+    )
+
+    cards = [("Research topics",
+              _bar_list(list(stats["topics"].items())[:12], n, link_fn=lambda t: search(t.lower())))]
+    for group, counts in stats["categories"].items():
+        rows = sorted(((label, c) for label, c in counts.items() if c), key=lambda r: -r[1])
+        patterns = categories.get(group, {})
+        cards.append((group,
+                      _bar_list(rows, n, link_fn=lambda label, p=patterns: search(search_term(p[label])) if label in p and search_term(p[label]) else None)))
+    cards_html = "".join(
+        f'<section class="viz-card"><h2>{html.escape(title)}</h2>{body}</section>'
+        for title, body in cards
+    )
+
+    if rising or falling:
+        changes_html = (
+            '<div class="change-grid">'
+            f'<div><h3>Rising</h3>{_change_list(rising, stats, "up")}</div>'
+            f'<div><h3>Falling</h3>{_change_list(falling, stats, "down")}</div>'
+            '</div>'
+        )
+    else:
+        since = history_since.strftime("%d %b %Y") if history_since else stats["date"]
+        changes_html = (
+            f'<p class="viz-empty">Collecting history since {html.escape(since)}. Each weekly update saves a snapshot; '
+            'once there is one from about a month earlier, this section shows which keywords, topics, methods and '
+            'disorders are appearing more or less often than before.</p>'
+        )
+
+    return f"""
+    <div class="trends-view" id="view-{view_id}" role="tabpanel" aria-labelledby="tab-{view_id}"{' hidden' if preprints else ''}>
+    <p class="trends-intro">{intro} Click a keyword or a bar label to see the matching {'preprints' if preprints else 'articles'}.</p>
+
+    <div class="stat-row">{tiles_html}</div>
+
+    <section class="viz-card viz-wide">
+      <h2>Most frequent keywords</h2>
+      <div class="chips">{chips or '<p class="viz-empty">No keywords yet.</p>'}</div>
+    </section>
+
+    <section class="viz-card viz-wide">
+      <h2>Rising and falling</h2>
+      {changes_html}
+    </section>
+
+    <div class="viz-grid">{cards_html}</div>
+    </div>
+"""
+
+
+def render_page(views, date, html_file):
+    """views: [(view id, switch label, page heading, view html)]; the first one is shown by default."""
+    switch = "".join(
+        f'<button type="button" role="tab" class="nav-pill{" active" if i == 0 else ""}" id="tab-{view_id}" '
+        f'data-view="{view_id}" data-title="{html.escape(heading)}" aria-controls="view-{view_id}" '
+        f'aria-selected="{"true" if i == 0 else "false"}">{html.escape(label)}</button>'
+        for i, (view_id, label, heading, _) in enumerate(views)
+    )
+    page = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <title>NeuroTOC – Trends</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body class="trends-page">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html" aria-label="NeuroTOC articles">
+        <img src="logo.svg" alt="" width="32" height="32">
+        <span class="brand-text">NeuroTOC</span>
+      </a>
+      <span class="updated">Updated {html.escape(date)}</span>
+      <nav class="topnav"><a class="nav-pill" href="index.html">Articles</a><a class="nav-pill active" href="trends.html" aria-current="page">Trends</a></nav>
+    </div>
+  </header>
+
+  <main class="trends-main">
+    <div class="trends-head">
+      <h1 class="trends-title" id="trendsTitle">{html.escape(views[0][2])}</h1>
+      <div class="view-switch" role="tablist" aria-label="Which articles to analyse">{switch}</div>
+    </div>
+    {"".join(view_html for _, _, _, view_html in views)}
+
+  </main>
+  <script>
+    // switch between views; the choice is kept in the URL (trends.html#preprints) so it can be linked
+    const tabs = document.querySelectorAll('.view-switch [data-view]');
+    function showView(id) {{
+      if (!document.getElementById('view-' + id)) return;
+      tabs.forEach(tab => {{
+        const on = tab.dataset.view === id;
+        tab.classList.toggle('active', on);
+        tab.setAttribute('aria-selected', on);
+        document.getElementById('view-' + tab.dataset.view).hidden = !on;
+        if (on) document.getElementById('trendsTitle').textContent = tab.dataset.title;
+      }});
+    }}
+    tabs.forEach(tab => tab.addEventListener('click', () => {{
+      showView(tab.dataset.view);
+      history.replaceState(null, '', tab.dataset.view === tabs[0].dataset.view ? location.pathname : '#' + tab.dataset.view);
+    }}));
+    if (location.hash) showView(location.hash.slice(1).split('/')[0]);
+    window.addEventListener('hashchange', () => showView(location.hash.slice(1).split('/')[0] || tabs[0].dataset.view));
+{JOURNALS_SCRIPT}
+  </script>
+</body>
+</html>
+"""
+    with open(html_file, "w", encoding="utf-8") as f:
+        f.write(page)
+    print(f"Trends page saved to {html_file}")
+
+
+def build_trends(articles, date, html_file="trends.html"):
+    """All articles, plus the bioRxiv preprints on their own (saved in the same snapshot)."""
+    stats = compute_stats(articles, date, per_journal=True)
+    stats["preprints"] = compute_stats([a for a in articles if a["journal"] == "Biorxiv"], date)
+    save_snapshot(stats)
+    baseline, history_since = load_baseline(date)
+
+    views = []
+    for view_id, label, heading, view_stats, past, journal in [
+        ("all", "All articles", "This month in neuroscience", stats, baseline, None),
+        ("preprints", "Preprints only", "This week on bioRxiv", stats["preprints"],
+         [b["preprints"] for b in baseline if "preprints" in b], "biorxiv"),
+    ]:
+        rising, falling = compute_changes(view_stats, past) if past else ([], [])
+        views.append((view_id, label, heading,
+                      _render_view(view_id, view_stats, rising, falling, history_since, journal)))
+    views.append(("journals", "Journals", "Journal profiles", render_journals_view(stats)))
+    render_page(views, date, html_file)
+
+
+# ---------- Journals view: journal profiles and "where is it published?" ----------
+# Profiles add up non-overlapping 30-day snapshots (the current one, then one about every month back):
+# weekly snapshots overlap, so adding all of them would count the same article several times.
+POOL_GAP_DAYS = 28
+POOL_MAX_DAYS = 125
+SIGNATURE_MIN_LIFT = 1.5     # "typical of this journal": at least 1.5x its share across all journals
+SIGNATURE_MIN_ARTICLES = 15  # below this a journal has too few articles for a signature
+SIGNATURE_MIN_OVERALL = 10   # items rarer than this across all journals give meaningless ratios
+WHERE_MIN_ARTICLES = 8       # topics / keywords offered in "where is it published?"
+
+
+def journal_slug(name):
+    """Same id as the journal sections on the articles page (build_html.py)."""
+    return re.sub(r'[^a-z0-9]+', '_', name.lower()).strip('_')
+
+
+def pool_journals(stats):
+    """Per-journal counts added up over non-overlapping snapshots, bioRxiv excluded (it has its own view)."""
+    snapshots = {stats["date"]: stats}
+    for path in glob.glob(os.path.join(TRENDS_DIR, "*.json")):
+        d = os.path.basename(path)[:-5]
+        if d not in snapshots:
+            with open(path, encoding="utf-8") as f:
+                snapshots[d] = json.load(f)
+    now = datetime.strptime(stats["date"], "%Y-%m-%d")
+    picked = []
+    for d in sorted(snapshots, reverse=True):
+        when = datetime.strptime(d, "%Y-%m-%d")
+        if (now - when).days > POOL_MAX_DAYS or "journals" not in snapshots[d]:
+            continue
+        if not picked or (picked[-1][0] - when).days >= POOL_GAP_DAYS:
+            picked.append((when, snapshots[d]))
+
+    pooled, labels = {}, {}
+    for _, snap in picked:
+        labels.update(snap.get("keyword_labels", {}))
+        for name, j in snap["journals"].items():
+            if name == "Biorxiv":
+                continue
+            p = pooled.setdefault(name, {"n_articles": 0, "n_reviews": 0, "items": {}})
+            p["n_articles"] += j["n_articles"]
+            p["n_reviews"] += j["n_reviews"]
+            for kind, counts in [("topic", j["topics"]), ("keyword", j["keywords"])] + list(j["categories"].items()):
+                for key, count in counts.items():
+                    p["items"][(kind, key)] = p["items"].get((kind, key), 0) + count
+    return pooled, labels, len(picked)
+
+
+def _item_label(item, labels):
+    kind, key = item
+    return labels.get(key, key) if kind == "keyword" else key
+
+
+def _signature(journal, totals, n_total, labels):
+    """Topics / keywords / categories whose share in the journal is well above their share across all journals."""
+    n = journal["n_articles"]
+    min_count = max(3, 0.03 * n)
+    rows = []
+    for item, count in journal["items"].items():
+        overall = totals.get(item, 0)
+        if count < min_count or overall < SIGNATURE_MIN_OVERALL:
+            continue
+        lift = (count / n) / (overall / n_total)
+        if lift >= SIGNATURE_MIN_LIFT:
+            rows.append((lift, item, count))
+    rows.sort(key=lambda r: (-r[0], -r[2]))
+    return rows[:8]
+
+
+def render_journals_view(stats):
+    """Journal profiles and "where is it published?". Both are drawn in the browser from compact JSON:
+    pre-rendering every journal's profile would make the page several times larger."""
+    pooled, labels, n_periods = pool_journals(stats)
+    if not pooled:
+        return '<div class="trends-view" id="view-journals" role="tabpanel" aria-labelledby="tab-journals" hidden>' \
+               '<p class="viz-empty">No journal data yet.</p></div>'
+    categories = load_categories()
+    totals, n_total = {}, 0
+    for j in pooled.values():
+        n_total += j["n_articles"]
+        for item, count in j["items"].items():
+            totals[item] = totals.get(item, 0) + count
+
+    def query(item):
+        """Search text for the articles page, or None when the item has no plain-text form."""
+        kind, raw = item
+        if kind == "topic":
+            return raw.lower()
+        if kind == "keyword":
+            return raw
+        pattern = categories.get(kind, {}).get(raw)
+        return search_term(pattern) if pattern else None
+
+    def top(j, kind, k):
+        rows = sorted(((key, c) for (kd, key), c in j["items"].items() if kd == kind), key=lambda r: -r[1])[:k]
+        return [[labels.get(key, key) if kind == "keyword" else key, c, query((kind, key))] for key, c in rows]
+
+    profiles, options = {}, ""
+    for name, j in sorted(pooled.items(), key=lambda kv: -kv[1]["n_articles"]):
+        slug, n = journal_slug(name), j["n_articles"]
+        options += f'<option value="{slug}">{html.escape(name)} ({n:,})</option>'
+        signature = None
+        if n >= SIGNATURE_MIN_ARTICLES:
+            signature = [[_item_label(item, labels), "" if item[0] == "keyword" else item[0], count, round(lift, 1),
+                          query(item)] for lift, item, count in _signature(j, totals, n_total, labels)]
+        profiles[slug] = {
+            "n": n, "perMonth": round(n / n_periods), "reviews": round(100 * j["n_reviews"] / n) if n else 0,
+            "signature": signature,
+            "topics": top(j, "topic", 8),
+            "groups": [[g, top(j, g, 4)] for g in ("Organisms", "Methods", "Disorders")],
+            "keywords": top(j, "keyword", 15),
+        }
+
+    # "where is it published?": for each topic / keyword / category, the journals publishing most on it
+    where = {}
+    for item, total in sorted(totals.items(), key=lambda kv: -kv[1]):
+        if total < WHERE_MIN_ARTICLES:
+            continue
+        label = _item_label(item, labels)
+        if label.lower() in where:
+            continue
+        rows = sorted(((jn, journal_slug(jn), j["items"].get(item, 0), j["n_articles"])
+                       for jn, j in pooled.items() if j["items"].get(item, 0)), key=lambda r: -r[2])[:10]
+        where[label.lower()] = {"label": label, "q": query(item), "rows": rows}
+
+    def as_json(data):
+        return json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+
+    datalist = "".join(f'<option value="{html.escape(w["label"])}">' for w in sorted(where.values(), key=lambda w: w["label"].lower()))
+    # start "where is it published?" on the most frequent keyword (categories like "Humans" are too generic)
+    first = next((labels.get(key, key) for (kind, key), _ in sorted(totals.items(), key=lambda kv: -kv[1])
+                  if kind == "keyword" and labels.get(key, key).lower() in where), "")
+    return f"""
+    <div class="trends-view" id="view-journals" role="tabpanel" aria-labelledby="tab-journals" hidden>
+    <p class="trends-intro">What each journal publishes most, and what is typical of it compared with the other journals,
+      over the last {n_periods} month{'s' if n_periods != 1 else ''}. For general journals (Nature, Science, …) only their
+      neuroscience articles are counted.</p>
+
+    <section class="viz-card viz-wide">
+      <h2>Journal profile</h2>
+      <label class="pick-label" for="journalPick">Journal</label>
+      <select id="journalPick" class="pick">{options}</select>
+    </section>
+    <div id="journalProfile" class="journal-profile"></div>
+
+    <section class="viz-card viz-wide">
+      <h2>Where is it published?</h2>
+      <label class="pick-label" for="whereInput">Topic, keyword, method or disorder</label>
+      <input type="search" id="whereInput" class="pick" list="whereList" value="{html.escape(first)}" autocomplete="off"
+             placeholder="e.g. microglia, EEG, Parkinson's disease">
+      <datalist id="whereList">{datalist}</datalist>
+      <ul class="bar-list" id="whereResult"></ul>
+    </section>
+    <script type="application/json" id="profileData">{as_json(profiles)}</script>
+    <script type="application/json" id="whereData">{as_json(where)}</script>
+    </div>
+"""
+
+
+JOURNALS_SCRIPT = """
+    // ----- journals view: drawn from the JSON in the page; all labels set with textContent -----
+    function el(tag, className, text) {
+      const e = document.createElement(tag);
+      if (className) e.className = className;
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+    function searchLink(q, slug) {
+      return `index.html?q=${encodeURIComponent(q)}&journal=${slug}`;
+    }
+    // rows: [{label, kind, href, width (0-100), value, title}]
+    function barList(rows, empty) {
+      if (!rows.length) return el('p', 'viz-empty', empty);
+      const ul = el('ul', 'bar-list');
+      for (const r of rows) {
+        const li = el('li', 'bar-row');
+        li.title = r.title;
+        const label = el('span', 'bar-label');
+        if (r.href) { const a = el('a', '', r.label); a.href = r.href; label.append(a); } else label.textContent = r.label;
+        if (r.kind) label.append(el('span', 'change-kind', r.kind));
+        const track = el('span', 'bar-track');
+        const bar = el('span', 'bar');
+        bar.style.width = `${Math.max(r.width, 1)}%`;
+        track.append(bar);
+        li.append(label, track, el('span', 'bar-value', r.value));
+        ul.append(li);
+      }
+      return ul;
+    }
+    function countRows(rows, n, slug) {
+      const top = rows.length ? rows[0][1] : 1;
+      return rows.map(([label, count, q]) => ({
+        label, href: q ? searchLink(q, slug) : null, width: 100 * count / top,
+        value: `${count} · ${Math.round(100 * count / n)}%`, title: `${label}: ${count} articles`,
+      }));
+    }
+    function card(title, ...content) {
+      const sec = el('section', 'viz-card');
+      sec.append(el('h2', '', title), ...content);
+      return sec;
+    }
+
+    const journalPick = document.getElementById('journalPick');
+    if (journalPick) {
+      const profiles = JSON.parse(document.getElementById('profileData').textContent);
+      const box = document.getElementById('journalProfile');
+      function showJournal(slug) {
+        const p = profiles[slug];
+        if (!p) return;
+        journalPick.value = slug;
+        const tiles = el('div', 'stat-row');
+        for (const [label, value] of [['Articles', p.n.toLocaleString('en')], ['Per month', p.perMonth.toLocaleString('en')], ['Reviews', `${p.reviews}%`]]) {
+          const t = el('div', 'stat-tile');
+          t.append(el('span', 'stat-label', label), el('span', 'stat-value', value));
+          tiles.append(t);
+        }
+        let signature;
+        if (p.signature === null) {
+          signature = el('p', 'viz-empty', 'Too few articles yet to tell what is typical of this journal.');
+        } else {
+          const topLift = p.signature.length ? p.signature[0][3] : 1;
+          signature = barList(p.signature.map(([label, kind, count, lift, q]) => ({
+            label, kind, href: q ? searchLink(q, slug) : null, width: 100 * lift / topLift, value: `×${lift.toFixed(1)}`,
+            title: `${label}: ${count} articles, ${lift.toFixed(1)} times its share across all journals`,
+          })), 'Nothing stands out from the other journals.');
+        }
+        const mini = el('div', 'mini-lists');
+        for (const [group, rows] of p.groups) mini.append(el('h3', '', group), barList(countRows(rows, p.n, slug), 'None mentioned.'));
+        const chips = el('div', 'chips');
+        for (const [label, count, q] of p.keywords) {
+          const a = el('a', 'chip', label);
+          a.href = searchLink(q, slug);
+          a.append(el('span', 'chip-count', String(count)));
+          chips.append(a);
+        }
+        if (!p.keywords.length) chips.append(el('p', 'viz-empty', 'No keywords yet.'));
+        const grid = el('div', 'viz-grid');
+        grid.append(
+          card('Typical of this journal', signature),
+          card('Most frequent topics', barList(countRows(p.topics, p.n, slug), 'No topics yet.')),
+          card('Organisms, methods, disorders', mini),
+          card('Keywords', chips),
+        );
+        box.replaceChildren(tiles, grid);
+      }
+      journalPick.addEventListener('change', () => {
+        showJournal(journalPick.value);
+        history.replaceState(null, '', '#journals/' + journalPick.value);
+      });
+      function journalFromHash() {
+        const m = location.hash.match(/^#journals\\/(.+)$/);
+        if (m && profiles[m[1]]) { showView('journals'); showJournal(m[1]); return true; }
+        return false;
+      }
+      if (!journalFromHash()) showJournal(journalPick.value);
+      window.addEventListener('hashchange', journalFromHash);
+    }
+
+    const whereInput = document.getElementById('whereInput');
+    if (whereInput) {
+      const where = JSON.parse(document.getElementById('whereData').textContent);
+      const result = document.getElementById('whereResult');
+      function renderWhere() {
+        const text = whereInput.value.trim().toLowerCase();
+        const item = where[text];
+        if (!item) {
+          result.replaceChildren(...(text ? [el('li', 'viz-empty', 'Pick one of the suggestions.')] : []));
+          return;
+        }
+        const top = item.rows[0][2];
+        const list = barList(item.rows.map(([name, slug, count, n]) => ({
+          label: name, href: item.q ? searchLink(item.q, slug) : null, width: 100 * count / top,
+          value: `${count} · ${Math.round(100 * count / n)}%`,
+          title: `${name}: ${count} articles (${Math.round(100 * count / n)}% of its articles)`,
+        })), '');
+        result.replaceChildren(...list.childNodes);
+      }
+      whereInput.addEventListener('input', renderWhere);
+      renderWhere();
+    }
+"""

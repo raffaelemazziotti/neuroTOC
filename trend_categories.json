@@ -1,0 +1,61 @@
+{
+  "_comment": "Categories counted on the Trends page. Each entry is a label and a regular expression searched (case-insensitive) in the title + abstract of every article. Edit freely: add, remove or rename entries; the page is rebuilt by the weekly job.",
+  "Organisms": {
+    "Humans (patients, participants)": "\\bpatients?\\b|\\bparticipants?\\b|\\bhumans?\\b|\\bvolunteers?\\b",
+    "Mouse": "\\bmice\\b|\\bmouse\\b|murine",
+    "Rat": "\\brats?\\b",
+    "Non-human primates": "macaque|monkey|non-human primate|marmoset",
+    "Drosophila": "drosophila|fruit fl",
+    "Zebrafish": "zebrafish",
+    "C. elegans": "elegans",
+    "Organoids": "organoid"
+  },
+  "Methods": {
+    "MRI / fMRI": "\\bf?mri\\b|magnetic resonance",
+    "Machine learning / AI": "machine learning|deep learning|neural network|\\bai\\b|artificial intelligence|large language model",
+    "EEG / MEG": "\\beeg\\b|\\bmeg\\b|electroencephalog|magnetoencephalog",
+    "Electrophysiology": "patch[- ]clamp|electrophysiolog|single[- ]unit|neuropixels|local field potential",
+    "Single-cell / spatial omics": "single[- ]cell|single[- ]nucleus|scrna|snrna|spatial transcriptom",
+    "Genetics (GWAS, Mendelian randomization)": "\\bgwas\\b|genome-wide|polygenic|mendelian randomi",
+    "Calcium imaging / two-photon": "calcium imaging|two-photon|2-photon|miniscope",
+    "Optogenetics / chemogenetics": "optogenet|chemogenet|dreadd",
+    "Brain stimulation (TMS, DBS, tDCS)": "transcranial|\\btms\\b|deep brain stimulation|\\bdbs\\b|\\btdcs\\b"
+  },
+  "Disorders": {
+    "Depression": "depress",
+    "Alzheimer's disease / dementia": "alzheimer|dementia",
+    "Pain": "\\bpain\\b|nocicept",
+    "Stroke": "stroke|cerebral ischemi",
+    "Schizophrenia / psychosis": "schizophren|psychos|psychotic",
+    "Parkinson's disease": "parkinson",
+    "Epilepsy": "epilep|seizure",
+    "Autism": "autis",
+    "Anxiety": "anxiety|anxious",
+    "Brain tumours": "glioma|glioblastoma|brain tumou?r",
+    "Multiple sclerosis": "multiple sclerosis",
+    "Addiction / substance use": "addiction|substance use|alcohol use|opioid use|cocaine|nicotine"
+  },
+  "Brain regions": {
+    "Hippocampus": "hippocamp",
+    "Prefrontal cortex": "prefrontal",
+    "Amygdala": "amygdal",
+    "Striatum / basal ganglia": "striatum|striatal|nucleus accumbens|basal ganglia",
+    "Hypothalamus": "hypothalam",
+    "Thalamus": "(?<!hypo)thalam",
+    "Cerebellum": "cerebell",
+    "Spinal cord": "spinal cord",
+    "Retina": "retina",
+    "Brainstem": "brainstem|brain stem|locus coeruleus",
+    "Visual cortex": "visual cortex|\\bv1\\b",
+    "Motor cortex": "motor cortex"
+  },
+  "Cell types": {
+    "Microglia": "microglia",
+    "Astrocytes": "astrocyt",
+    "Oligodendrocytes / myelin": "oligodendro|myelin",
+    "Interneurons": "interneuron|parvalbumin|somatostatin",
+    "Dopaminergic neurons": "dopaminergic",
+    "Stem / progenitor cells": "progenitor|stem cell",
+    "Blood-brain barrier / vasculature": "blood[- ]brain barrier|endotheli|pericyte"
+  }
+}
