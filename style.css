@@ -549,8 +549,33 @@ button:focus-visible, a:focus-visible, summary:focus-visible, .journal-header:fo
   margin: 0 auto;
   padding: 24px 24px 80px;
 }
+.trends-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 10px;
+}
+/* All articles / Preprints only: same look as the Articles/Trends switch */
+.view-switch {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+button.nav-pill {
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+button.nav-pill.active {
+  background: var(--tag-bg);
+}
 .trends-title {
-  margin: 8px 0 6px;
+  margin: 0;
   font-size: 28px;
   color: var(--text);
 }

@@ -176,18 +176,35 @@ def _change_list(changes, stats, direction):
     return out + "</ul>"
 
 
-def render_page(stats, rising, falling, history_since, html_file="trends.html"):
+def _render_view(view_id, stats, rising, falling, history_since, journal=None):
+    """One view of the page (all articles, or preprints only). `journal` restricts the search links."""
     n = stats["n_articles"]
-    search = lambda q: f"index.html?q={quote(q)}"
-    categories = load_categories()
+    preprints = view_id == "preprints"
 
-    tiles = [
-        ("Articles", f"{n:,}"),
-        ("Journals + bioRxiv", f"{stats['n_sources']}"),
-        ("Preprints", f"{stats['n_preprints']:,}"),
-        ("Reviews", f"{stats['n_reviews']:,}"),
-        ("With abstract", f"{stats['n_with_abstract'] / n:.0%}" if n else "–"),
-    ]
+    def search(q):
+        return f"index.html?q={quote(q)}" + (f"&journal={journal}" if journal else "")
+
+    categories = load_categories()
+    if preprints:
+        tiles = [
+            ("Preprints", f"{n:,}"),
+            ("Period", "last 7 days"),
+            ("With abstract", f"{stats['n_with_abstract'] / n:.0%}" if n else "–"),
+        ]
+        intro = (f"What the {n:,} neuroscience preprints posted on bioRxiv in the last 7 days are about: the newest work, "
+                 "before peer review. Counts are numbers of preprints; percentages are shares of all preprints.")
+    else:
+        tiles = [
+            ("Articles", f"{n:,}"),
+            ("Journals + bioRxiv", f"{stats['n_sources']}"),
+            ("Preprints", f"{stats['n_preprints']:,}"),
+            ("Reviews", f"{stats['n_reviews']:,}"),
+            ("With abstract", f"{stats['n_with_abstract'] / n:.0%}" if n else "–"),
+        ]
+        intro = (f"What the {n:,} articles published in the last 30 days are about. Counts are numbers of articles; "
+                 "percentages are shares of all articles.")
+    keyword_source = ("OpenAlex keywords (preprints are not in PubMed)" if preprints
+                      else "MeSH terms and author keywords from PubMed, or OpenAlex keywords")
     tiles_html = "".join(
         f'<div class="stat-tile"><span class="stat-label">{label}</span><span class="stat-value">{value}</span></div>'
         for label, value in tiles
@@ -226,6 +243,37 @@ def render_page(stats, rising, falling, history_since, html_file="trends.html"):
             'disorders are appearing more or less often than before.</p>'
         )
 
+    return f"""
+    <div class="trends-view" id="view-{view_id}" role="tabpanel" aria-labelledby="tab-{view_id}"{' hidden' if preprints else ''}>
+    <p class="trends-intro">{intro} Click a keyword or a bar label to see the matching {'preprints' if preprints else 'articles'}.</p>
+
+    <div class="stat-row">{tiles_html}</div>
+
+    <section class="viz-card viz-wide">
+      <h2>Most frequent keywords</h2>
+      <p class="viz-sub">{keyword_source}; spelling variants merged</p>
+      <div class="chips">{chips or '<p class="viz-empty">No keywords yet.</p>'}</div>
+    </section>
+
+    <section class="viz-card viz-wide">
+      <h2>Rising and falling</h2>
+      <p class="viz-sub">Share of {'preprints' if preprints else 'articles'} now compared with about a month earlier</p>
+      {changes_html}
+    </section>
+
+    <div class="viz-grid">{cards_html}</div>
+    </div>
+"""
+
+
+def render_page(views, date, html_file="trends.html"):
+    """views: [(view id, switch label, page heading, view html)]; the first one is shown by default."""
+    switch = "".join(
+        f'<button type="button" role="tab" class="nav-pill{" active" if i == 0 else ""}" id="tab-{view_id}" '
+        f'data-view="{view_id}" data-title="{html.escape(heading)}" aria-controls="view-{view_id}" '
+        f'aria-selected="{"true" if i == 0 else "false"}">{html.escape(label)}</button>'
+        for i, (view_id, label, heading, _) in enumerate(views)
+    )
     page = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -243,36 +291,42 @@ def render_page(stats, rising, falling, history_since, html_file="trends.html"):
         <img src="logo.svg" alt="" width="32" height="32">
         <span class="brand-text">NeuroTOC</span>
       </a>
-      <span class="updated">Updated {html.escape(stats['date'])}</span>
+      <span class="updated">Updated {html.escape(date)}</span>
       <nav class="topnav"><a class="nav-pill" href="index.html">Articles</a><a class="nav-pill active" href="trends.html" aria-current="page">Trends</a></nav>
     </div>
   </header>
 
   <main class="trends-main">
-    <h1 class="trends-title">This month in neuroscience</h1>
-    <p class="trends-intro">What the {n:,} articles published in the last 30 days are about. Counts are numbers of articles;
-      percentages are shares of all articles. Click a keyword or a bar label to see the matching articles.</p>
-
-    <div class="stat-row">{tiles_html}</div>
-
-    <section class="viz-card viz-wide">
-      <h2>Most frequent keywords</h2>
-      <p class="viz-sub">MeSH terms and author keywords from PubMed, or OpenAlex keywords; spelling variants merged</p>
-      <div class="chips">{chips}</div>
-    </section>
-
-    <section class="viz-card viz-wide">
-      <h2>Rising and falling</h2>
-      <p class="viz-sub">Share of articles now compared with about a month earlier</p>
-      {changes_html}
-    </section>
-
-    <div class="viz-grid">{cards_html}</div>
+    <div class="trends-head">
+      <h1 class="trends-title" id="trendsTitle">{html.escape(views[0][2])}</h1>
+      <div class="view-switch" role="tablist" aria-label="Which articles to analyse">{switch}</div>
+    </div>
+    {"".join(view_html for _, _, _, view_html in views)}
 
     <p class="trends-note">Large journals weigh more: Scientific Reports alone publishes about a quarter of the articles.
       Topics and keywords come from PubMed and OpenAlex and are partly machine-assigned. Categories are searched in titles
       and abstracts (list in <code>trend_categories.json</code>).</p>
   </main>
+  <script>
+    // switch between views; the choice is kept in the URL (trends.html#preprints) so it can be linked
+    const tabs = document.querySelectorAll('.view-switch [data-view]');
+    function showView(id) {{
+      if (!document.getElementById('view-' + id)) return;
+      tabs.forEach(tab => {{
+        const on = tab.dataset.view === id;
+        tab.classList.toggle('active', on);
+        tab.setAttribute('aria-selected', on);
+        document.getElementById('view-' + tab.dataset.view).hidden = !on;
+        if (on) document.getElementById('trendsTitle').textContent = tab.dataset.title;
+      }});
+    }}
+    tabs.forEach(tab => tab.addEventListener('click', () => {{
+      showView(tab.dataset.view);
+      history.replaceState(null, '', tab.dataset.view === tabs[0].dataset.view ? location.pathname : '#' + tab.dataset.view);
+    }}));
+    if (location.hash) showView(location.hash.slice(1));
+    window.addEventListener('hashchange', () => showView(location.hash.slice(1) || tabs[0].dataset.view));
+  </script>
 </body>
 </html>
 """
@@ -282,8 +336,18 @@ def render_page(stats, rising, falling, history_since, html_file="trends.html"):
 
 
 def build_trends(articles, date):
+    """All articles, plus the bioRxiv preprints on their own (saved in the same snapshot)."""
     stats = compute_stats(articles, date)
+    stats["preprints"] = compute_stats([a for a in articles if a["journal"] == "Biorxiv"], date)
     save_snapshot(stats)
     baseline, history_since = load_baseline(date)
-    rising, falling = compute_changes(stats, baseline) if baseline else ([], [])
-    render_page(stats, rising, falling, history_since)
+
+    views = []
+    for view_id, label, heading, view_stats, past, journal in [
+        ("all", "All articles", "This month in neuroscience", stats, baseline, None),
+        ("preprints", "Preprints only", "This week on bioRxiv", stats["preprints"],
+         [b["preprints"] for b in baseline if "preprints" in b], "biorxiv"),
+    ]:
+        rising, falling = compute_changes(view_stats, past) if past else ([], [])
+        views.append((view_id, label, heading, _render_view(view_id, view_stats, rising, falling, history_since, journal)))
+    render_page(views, date)

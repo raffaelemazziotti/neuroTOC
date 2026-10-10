@@ -38,10 +38,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const savedUpdatedDate = localStorage.getItem("siteUpdatedDate");
 
   // A link from the trends page (index.html?q=microglia) opens a search across all journals
-  const linkedQuery = new URLSearchParams(location.search).get('q');
+  // (&journal=biorxiv limits it to one journal)
+  const params = new URLSearchParams(location.search);
+  const linkedQuery = params.get('q');
   if (linkedQuery !== null) {
     localStorage.setItem("searchWord", linkedQuery);
-    localStorage.setItem("selectedJournal", "All_Journals");
+    localStorage.setItem("selectedJournal", params.get('journal') || "All_Journals");
     localStorage.removeItem("scrollPosition");
   }
 
