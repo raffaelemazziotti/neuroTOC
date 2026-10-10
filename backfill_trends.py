@@ -4,6 +4,7 @@ Downloads the 30 days of articles (and 7 days of preprints) before each date, ex
 and saves only trends/<date>.json. The site's own files (index.html, all_journals_toc.xml, ...) are not touched.
 
     python backfill_trends.py 2026-09-10 2026-08-11 2026-07-12
+    python backfill_trends.py --force 2026-09-10     # rebuild an existing snapshot
 """
 import os
 import sys
@@ -14,14 +15,15 @@ from build_html import get_journal_info, save_all_toc_to_xml, generate_html_from
 from trends_lib import TRENDS_DIR
 
 if __name__ == "__main__":
-    dates = sys.argv[1:]
+    force = "--force" in sys.argv
+    dates = [a for a in sys.argv[1:] if a != "--force"]
     if not dates:
         sys.exit(__doc__)
     journals = get_journal_info()
     with tempfile.TemporaryDirectory() as tmp:
         for d in dates:
             end_date = datetime.strptime(d, "%Y-%m-%d")
-            if os.path.exists(os.path.join(TRENDS_DIR, f"{d}.json")):
+            if os.path.exists(os.path.join(TRENDS_DIR, f"{d}.json")) and not force:
                 print(f"{d}: snapshot already exists, skipping")
                 continue
             print(f"=== {d}: downloading the 30 days before")

@@ -693,6 +693,53 @@ button.nav-pill.active {
   color: var(--muted);
   font-size: 12px;
 }
+/* journals view: journal picker, topic box, small lists */
+.pick-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.pick {
+  width: 100%;
+  max-width: 480px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+select.pick {
+  cursor: pointer;
+  /* small chevron drawn with two gradients, in the secondary text color */
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+                    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 36px;
+}
+.pick:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--tag-bg);
+}
+#whereResult {
+  margin-top: 14px;
+}
+.journal-profile {
+  margin-bottom: 16px;
+}
+.mini-lists h3 {
+  margin: 12px 0 4px;
+}
+.mini-lists h3:first-child {
+  margin-top: 0;
+}
+
 /* keyword chips link to a search on the articles page */
 .chips {
   display: flex;
@@ -735,6 +782,14 @@ button.nav-pill.active {
   }
   .stat-row {
     grid-template-columns: repeat(2, 1fr);
+  }
+  /* journal profiles have exactly three tiles: keep them on one row */
+  .journal-profile .stat-row {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .journal-profile .stat-tile {
+    padding: 10px;
   }
   .stat-value {
     font-size: 22px;
