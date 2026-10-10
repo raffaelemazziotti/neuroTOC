@@ -29,7 +29,7 @@ jobs:
       - name: Run XML and HTML Generation Scripts
         env:
           # optional free keys with their own budgets (the anonymous ones are shared by everyone on GitHub's IPs)
-          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX }}
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
         run: |
           python main.py
