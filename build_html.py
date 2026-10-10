@@ -128,6 +128,7 @@ def add_openalex_tags(article_elem, oa_record):
     if oa_record:
         ET.SubElement(article_elem, "Topic").text = oa_record['topic']
         ET.SubElement(article_elem, "OpenAlexKeywords").text = '; '.join(oa_record['keywords'])
+        ET.SubElement(article_elem, "TopicFields").text = '; '.join(oa_record['topic_fields'])
 
 
 def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
@@ -278,6 +279,42 @@ def classify_article(article, title, filter_words):
     return "research", None
 
 
+# Neuroscience filter for general journals (Nature, Scientific Reports, PNAS, ...), based on OpenAlex topics.
+# A journal where at least this share of articles is neuroscience counts as a neuroscience journal
+# and is kept whole; in the others only the neuroscience articles are kept.
+NEURO_JOURNAL_SHARE = 0.7
+NEURO_SUBFIELDS = {
+    "Psychiatry and Mental health", "Neurology", "Clinical Psychology", "Experimental and Cognitive Psychology",
+    "Developmental and Educational Psychology", "Behavioral Neuroscience", "Cognitive Neuroscience", "Sensory Systems",
+}
+# phrases that contain neuro-words but are not neuroscience (machine learning, oncology of other organs, ...)
+NOT_NEURO_RE = re.compile(
+    r"neural networks?|neural operator|neural radiance|neural computing|neuromorphic|neuroendocrine|"
+    r"dendritic cells?|adrenal cortex|renal cortex|adrenocortical|striated muscle", re.I)
+NEURO_RE = re.compile(
+    r"neur|brain|cortex|cortical|hippocamp|synap|glia|glioma|glioblastoma|astrocyt|microglia|\baxon|dendrit|spinal cord|"
+    r"cerebr|alzheimer|parkinson|dementia|epilep|seizure|stroke|autis|schizophren|psychiatr|depressi|anxiety|bipolar|"
+    r"\bcognit|sleep|nocicept|\bpain\b|\bnicotine\b|addiction|dopamin|serotonin|amygdala|thalam|striatum|striatal|cerebell|"
+    r"multiple sclerosis|amyotrophic|huntington|migraine|concussion|nervous system|psychosis|psychotic|adhd|"
+    r"consciousness|fmri|electroencephalogra|retina|optogenet|anesthe",
+    re.I)
+
+
+def neuro_title(text):
+    """Does the text contain a neuroscience word?"""
+    return bool(NEURO_RE.search(NOT_NEURO_RE.sub(' ', text)))
+
+
+def is_neuroscience(article, title):
+    """True/False from OpenAlex's topics (field, subfield, name) and the title; None when OpenAlex has no topics."""
+    topic_fields = [t.split(' > ') for t in (article.findtext('TopicFields') or '').split('; ') if t.count(' > ') == 2]
+    if not topic_fields:
+        return None
+    if any(field == "Neuroscience" or subfield in NEURO_SUBFIELDS for field, subfield, _ in topic_fields):
+        return True
+    return neuro_title(topic_fields[0][2]) or neuro_title(title)
+
+
 def article_tags(article):
     """Major MeSH topics and author keywords from PubMed; OpenAlex keywords when PubMed has none."""
     tags, seen = [], set()
@@ -302,6 +339,7 @@ def short_authors(authors, n=3):
 def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.html"):
     """Generate the final HTML file.
        - Every article is rendered once, grouped in one collapsible section per journal
+       - General journals keep only their neuroscience articles (is_neuroscience)
        - The journal sidebar (a bottom sheet on mobile) and the search filter those sections client-side (script.js)
        - All text is HTML-escaped
     """
@@ -319,8 +357,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
         journal_name = journal.get('name')
         journal_id = re.sub(r'[^a-z0-9]+', '_', journal_name.lower()).strip('_')
 
-        articles_html = ""
-        n_articles = 0
+        cards = []  # (card html, is neuroscience per OpenAlex or None, neuroscience word in title)
         for article in journal.findall('Article'):
             title = clean_text(article.findtext('Title')) or "N/A"
             doi = article.findtext('DOI') or "#"
@@ -352,7 +389,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                 type_tag = ''
             abstract_tag = '<span class="tag tag-abstract">Abstract</span>' if has_abstract else ''
 
-            articles_html += (
+            cards.append((
                 '<li class="article-item"><details><summary>'
                 f'<span class="article-title">{html.escape(title)}</span>'
                 f'<span class="article-authors-short">{html.escape(short_authors(authors))}</span>'
@@ -360,9 +397,23 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                 '</summary><div class="article-body">'
                 f'<p class="article-authors">{html.escape(authors)}</p>'
                 f'<p class="abstract">{html.escape(abstract)}</p>{tags_html}</div></details>'
-                f'<a href="{html.escape(doi)}" target="_blank" rel="noopener" class="read-more-link">Read article &#8599;</a></li>\n'
-            )
-            n_articles += 1
+                f'<a href="{html.escape(doi)}" target="_blank" rel="noopener" class="read-more-link">Read article &#8599;</a></li>\n',
+                is_neuroscience(article, title),
+                neuro_title(title)
+            ))
+
+        # General journals keep only their neuroscience articles (bioRxiv is already the neuroscience category)
+        judged = [neuro for _, neuro, _ in cards if neuro is not None]
+        neuro_share = sum(judged) / len(judged) if judged else 1
+        if journal.get('issn') != '0000-0000' and neuro_share < NEURO_JOURNAL_SHARE:
+            # articles OpenAlex does not know yet are judged on their title alone
+            kept = [card for card, neuro, title_hit in cards if neuro or (neuro is None and title_hit)]
+            excluded['off-topic'] = excluded.get('off-topic', 0) + len(cards) - len(kept)
+            print(f"General journal: {journal_name} ({neuro_share:.0%} neuroscience), kept {len(kept)} of {len(cards)}")
+        else:
+            kept = [card for card, _, _ in cards]
+        articles_html = "".join(kept)
+        n_articles = len(kept)
 
         total_articles += n_articles
         journal_nav += (

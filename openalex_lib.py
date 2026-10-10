@@ -18,7 +18,7 @@ def _abstract_from_index(inverted_index):
 
 
 def get_openalex_records(dois, min_score=0.6):
-    """Look up DOIs in OpenAlex. Returns {normalized doi: {'type', 'abstract', 'topic', 'keywords'}}.
+    """Look up DOIs in OpenAlex. Returns {normalized doi: {'type', 'abstract', 'topic', 'keywords', 'topic_fields'}}.
     OpenAlex picks up new CrossRef records within days, so it covers articles PubMed has not indexed
     yet and preprints; topic and keywords are machine-assigned, only confident ones are kept."""
     wanted = sorted({normalize_doi(d) for d in dois if d and d != "N/A"})
@@ -30,7 +30,7 @@ def get_openalex_records(dois, min_score=0.6):
                 r = requests.get("https://api.openalex.org/works", timeout=60, params={
                     "filter": "doi:" + "|".join(batch),
                     "per-page": BATCH,
-                    "select": "doi,type,abstract_inverted_index,primary_topic,keywords",
+                    "select": "doi,type,abstract_inverted_index,primary_topic,topics,keywords",
                 })
                 if r.status_code == 200:
                     break
@@ -49,6 +49,11 @@ def get_openalex_records(dois, min_score=0.6):
                     "abstract": _abstract_from_index(work.get("abstract_inverted_index")),
                     "topic": topic.get("display_name", "") if topic.get("score", 0) >= min_score else "",
                     "keywords": [k["display_name"] for k in keywords if k.get("score", 0) >= min_score],
+                    # top 3 topics as 'field > subfield > topic', used to tell neuroscience papers apart
+                    "topic_fields": [
+                        f"{t['field']['display_name']} > {t['subfield']['display_name']} > {t['display_name']}"
+                        for t in (work.get("topics") or [])[:3]
+                    ],
                 }
         time.sleep(0.1)
     print(f"OpenAlex: found {len(records)} of {len(wanted)} articles")
