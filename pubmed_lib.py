@@ -5,21 +5,20 @@ import xml.etree.ElementTree as ET
 
 EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 # Without an API key NCBI allows 3 requests/second; with NCBI_API_KEY, 10/second
-API_KEY = os.environ.get("NCBI_API_KEY")
-DELAY = 0.12 if API_KEY else 0.4
 BATCH = 100
 
 
 def _post(endpoint, data, retries=4):
     """POST to E-utilities, retrying on rate limits / server errors. Returns None on failure."""
     data = {**data, "tool": "neuroTOC"}
-    if API_KEY:
-        data["api_key"] = API_KEY
+    api_key = os.environ.get("NCBI_API_KEY")
+    if api_key:
+        data["api_key"] = api_key
     for attempt in range(retries):
         try:
             r = requests.post(f"{EUTILS}/{endpoint}", data=data, timeout=60)
             if r.status_code == 200:
-                time.sleep(DELAY)
+                time.sleep(0.12 if api_key else 0.4)
                 return r
         except requests.RequestException:
             pass

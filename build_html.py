@@ -6,10 +6,27 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import re
 import html
+import os
 from preprint_lib import get_latest_preprints
 from pubmed_lib import get_pubmed_records, normalize_doi
 from openalex_lib import get_openalex_records
 from trends_lib import build_trends
+
+def load_env_file(filename=".env"):
+    """Local runs: read API keys (OPENALEX_API_KEY, NCBI_API_KEY) from a .env file, which git ignores.
+    Variables already set (e.g. GitHub secrets in the weekly job) take precedence."""
+    if not os.path.exists(filename):
+        return
+    with open(filename, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, value = line.split("=", 1)
+                os.environ.setdefault(key.strip(), value.strip().strip("'\""))
+
+
+load_env_file()
+
 
 def save_dataframe_to_html(df: pd.DataFrame, output_file: str = "journals_list.html"):
     """(Optional) Save the DataFrame as a styled HTML table."""

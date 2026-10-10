@@ -5,9 +5,9 @@ import requests
 from pubmed_lib import normalize_doi
 
 BATCH = 50
-# Without a key OpenAlex allows a small free daily budget per IP address, shared with everyone on that IP
-# (GitHub's runners included); a free personal key has its own budget. https://openalex.org/settings/api
-API_KEY = os.environ.get("OPENALEX_API_KEY")
+# Without a key (env OPENALEX_API_KEY) OpenAlex allows a small free daily budget per IP address, shared with
+# everyone on that IP (GitHub's runners included); a free personal key has its own budget.
+# https://openalex.org/settings/api
 
 
 def _abstract_from_index(inverted_index):
@@ -27,7 +27,8 @@ def get_openalex_records(dois, min_score=0.6):
     yet and preprints; topic and keywords are machine-assigned, only confident ones are kept."""
     wanted = sorted({normalize_doi(d) for d in dois if d and d != "N/A"})
     records = {}
-    headers = {"Authorization": f"Bearer {API_KEY}"} if API_KEY else {}
+    api_key = os.environ.get("OPENALEX_API_KEY")
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     for i in range(0, len(wanted), BATCH):
         batch = wanted[i:i + BATCH]
         r = None
@@ -45,7 +46,7 @@ def get_openalex_records(dois, min_score=0.6):
             time.sleep(2 * (attempt + 1))
         if r is not None and r.status_code == 429:
             # daily budget used up: retrying will not help until it resets
-            print(f"OpenAlex daily budget exhausted ({'with' if API_KEY else 'without'} API key): {r.text[:200]}")
+            print(f"OpenAlex daily budget exhausted ({'with' if api_key else 'without'} API key): {r.text[:200]}")
             break
         if r is None or r.status_code != 200:
             print(f"OpenAlex lookup failed for batch {i // BATCH + 1}")
