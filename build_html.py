@@ -66,13 +66,18 @@ def clean_abstract(raw_abstract):
         return clean_text(raw_abstract)
     return "No preview available"
 
-def get_journal_toc(issn):
-    """Fetch all articles from the last 30 days for a given journal (ISSN) using CrossRef API with pagination."""
-    month_start = (datetime.utcnow() - timedelta(days=30)).strftime('%Y-%m-%d')
+def get_journal_toc(issn, end_date=None):
+    """Fetch all articles from the 30 days before end_date (default: now) for a given journal (ISSN)
+    using CrossRef API with pagination."""
+    end = end_date or datetime.utcnow()
+    month_start = (end - timedelta(days=30)).strftime('%Y-%m-%d')
+    date_filter = f"from-pub-date:{month_start}"
+    if end_date:
+        date_filter += f",until-pub-date:{end_date.strftime('%Y-%m-%d')}"
 
     url = f"https://api.crossref.org/journals/{issn}/works"
     params = {
-        "filter": f"from-pub-date:{month_start}",
+        "filter": date_filter,
         "rows": 100,
         "cursor": "*"
     }
@@ -132,21 +137,22 @@ def add_openalex_tags(article_elem, oa_record):
         ET.SubElement(article_elem, "TopicFields").text = '; '.join(oa_record['topic_fields'])
 
 
-def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
-    """Save all TOC data into an XML file."""
-    root = ET.Element("JournalsTOC", updated=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    # TODO insert preprints
+def save_all_toc_to_xml(journals, filename="all_journals_toc.xml", end_date=None):
+    """Save all TOC data into an XML file. end_date (a datetime) downloads an earlier period instead of
+    the latest one; backfill_trends.py uses it to rebuild the history of the trends page."""
+    updated = (end_date or datetime.now()).strftime('%Y-%m-%d %H:%M:%S')
+    root = ET.Element("JournalsTOC", updated=updated)
     print('Downloading TOC from: Biorxiv')
     try:
-        neuro_preprints = get_latest_preprints()
+        neuro_preprints = get_latest_preprints(end_date)
     except:
         neuro_preprints = []
-    biorxiv_updated = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    biorxiv_updated = updated
 
     tocs = []
     for _, journal in journals.iterrows():
         print(f"Downloading TOC from: {journal['Journal Name']}")
-        tocs.append((journal, get_journal_toc(journal['ISSN']), datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        tocs.append((journal, get_journal_toc(journal['ISSN'], end_date), updated if end_date else datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
         time.sleep(0.5)
 
     # PubMed adds what CrossRef lacks: article types (to drop news, editorials, errata, ...),
@@ -164,8 +170,14 @@ def save_all_toc_to_xml(journals, filename="all_journals_toc.xml"):
     try:
         openalex = get_openalex_records(journal_dois + [article['doi'] for article in neuro_preprints])
     except Exception as e:
-        print(f"OpenAlex lookup failed, continuing without it: {e}")
+        print(f"OpenAlex lookup failed: {e}")
         openalex = {}
+    # Topics, keywords and the neuroscience filter depend on OpenAlex: without it the page would silently
+    # lose them and general journals would come back unfiltered, so stop instead of publishing that
+    found = sum(normalize_doi(d) in openalex for d in journal_dois)
+    if journal_dois and found < 0.5 * len(journal_dois):
+        raise RuntimeError(f"OpenAlex returned data for only {found} of {len(journal_dois)} articles; "
+                           "not publishing. Set OPENALEX_API_KEY or retry later.")
 
     journal_elem = ET.SubElement(root, "Journal",
                                  name='Biorxiv',
@@ -337,7 +349,7 @@ def short_authors(authors, n=3):
     return '; '.join(names[:n]) + ' et al.'
 
 
-def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.html"):
+def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.html", trends_file="trends.html"):
     """Generate the final HTML file.
        - Every article is rendered once, grouped in one collapsible section per journal
        - General journals keep only their neuroscience articles (is_neuroscience)
@@ -403,7 +415,9 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                 is_neuroscience(article, title),
                 neuro_title(title),
                 {'title': title, 'abstract': abstract if has_abstract else '', 'has_abstract': has_abstract,
-                 'topic': topic, 'tags': tags, 'journal': journal_name, 'kind': kind}
+                 'topic': topic, 'tags': tags, 'journal': journal_name, 'kind': kind,
+                 # one keyword source for every article, so trends compare like with like across periods
+                 'oa_keywords': [k.strip() for k in (article.findtext('OpenAlexKeywords') or '').split(';') if k.strip()]}
             ))
 
         # General journals keep only their neuroscience articles (bioRxiv is already the neuroscience category)
@@ -504,7 +518,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     print(f"Excluded articles: {sum(excluded.values())} {excluded}")
     print(f"HTML file saved to {html_file}")
 
-    build_trends(page_articles, update_date.split(' ')[0])
+    build_trends(page_articles, update_date.split(' ')[0], trends_file)
 
 
 if __name__ == "__main__":

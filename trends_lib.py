@@ -24,7 +24,15 @@ GENERIC_KEYWORDS = {
 # rising / falling: compare with snapshots at least this old (the article window is 30 days,
 # so younger snapshots mostly contain the same articles)
 BASELINE_MIN_DAYS, BASELINE_MAX_DAYS = 25, 120
+# an item must reach this many articles (and this share of all articles) in one of the periods to be listed:
+# below that, changes are mostly chance
 MIN_COUNT_FOR_CHANGE = 8
+MIN_SHARE_FOR_CHANGE = 0.005
+# keywords / topics stored per snapshot; one missing from a full list is counted at the list's smallest count
+KEYWORDS_STORED = 2000
+TOPICS_STORED = 1000
+# list lengths of older snapshots, which kept only the top 300 keywords and top 100 topics
+FULL_LIST_SIZES = {"keyword": (300, KEYWORDS_STORED), "topic": (100, TOPICS_STORED)}
 
 
 def keyword_key(keyword):
@@ -62,9 +70,9 @@ def compute_stats(articles, date):
     for a in articles:
         if a["topic"]:
             topics[a["topic"]] = topics.get(a["topic"], 0) + 1
-        for key in {keyword_key(t) for t in a["tags"]} - generic - {""}:
+        for key in {keyword_key(t) for t in a["oa_keywords"]} - generic - {""}:
             keywords[key] = keywords.get(key, 0) + 1
-        for tag in a["tags"]:
+        for tag in a["oa_keywords"]:
             labels.setdefault(keyword_key(tag), {}).setdefault(tag, 0)
             labels[keyword_key(tag)][tag] += 1
         text = f"{a['title']} {a['abstract']}"
@@ -72,7 +80,7 @@ def compute_stats(articles, date):
             for label, rx in entries.items():
                 if rx.search(text):
                     category_counts[group][label] += 1
-    top_keywords = dict(sorted(keywords.items(), key=lambda kv: -kv[1])[:300])
+    top_keywords = dict(sorted(keywords.items(), key=lambda kv: -kv[1])[:KEYWORDS_STORED])
     return {
         "date": date,
         "n_articles": len(articles),
@@ -80,7 +88,7 @@ def compute_stats(articles, date):
         "n_reviews": sum(a["kind"] in ("review", "meta-analysis") for a in articles),
         "n_preprints": sum(a["journal"] == "Biorxiv" for a in articles),
         "n_with_abstract": sum(a["has_abstract"] for a in articles),
-        "topics": dict(sorted(topics.items(), key=lambda kv: -kv[1])[:100]),
+        "topics": dict(sorted(topics.items(), key=lambda kv: -kv[1])[:TOPICS_STORED]),
         "keywords": top_keywords,
         # the most common spelling of each merged keyword, for display
         "keyword_labels": {k: max(labels[k].items(), key=lambda kv: kv[1])[0] for k in top_keywords},
@@ -112,6 +120,14 @@ def load_baseline(date):
 
 def compute_changes(stats, baseline):
     """Share of articles now vs the average share in the baseline snapshots, for keywords, topics and categories."""
+    def floors(s):
+        # a keyword or topic missing from a cut-off list had at most the smallest stored count, not zero
+        # (counting it as zero invents huge rises and falls)
+        out = {}
+        for kind, counts in (("keyword", s["keywords"]), ("topic", s["topics"])):
+            out[kind] = min(counts.values()) if len(counts) in FULL_LIST_SIZES[kind] else 0
+        return out
+
     def items(s):
         out = {("keyword", k): v for k, v in s["keywords"].items()}
         out.update({("topic", k): v for k, v in s["topics"].items()})
@@ -119,16 +135,21 @@ def compute_changes(stats, baseline):
             out.update({(group, k): v for k, v in entries.items()})
         return out
 
-    now = items(stats)
-    past = [(items(b), b["n_articles"]) for b in baseline]
+    now, now_floor = items(stats), floors(stats)
+    past = [(items(b), b["n_articles"], floors(b)) for b in baseline]
+
+    def get(counts, key, floor):
+        return counts.get(key, floor.get(key[0], 0))
+
+    min_count = max(MIN_COUNT_FOR_CHANGE, MIN_SHARE_FOR_CHANGE * stats["n_articles"])
     changes = []
-    for key in set(now) | {k for p, _ in past for k in p}:
-        count = now.get(key, 0)
-        past_count = sum(p.get(key, 0) for p, _ in past) / len(past)
-        if max(count, past_count) < MIN_COUNT_FOR_CHANGE:
+    for key in set(now) | {k for p, _, _ in past for k in p}:
+        count = get(now, key, now_floor)
+        past_count = sum(get(p, key, f) for p, _, f in past) / len(past)
+        if max(count, past_count) < min_count:
             continue
         share = count / stats["n_articles"]
-        past_share = sum(p.get(key, 0) / n for p, n in past) / len(past)
+        past_share = sum(get(p, key, f) / n for p, n, f in past) / len(past)
         # +1 smoothing so a jump from 0 to 8 articles is not "infinitely" rising
         ratio = (share * stats["n_articles"] + 1) / (past_share * stats["n_articles"] + 1)
         changes.append((math.log(ratio), key, count, past_share))
@@ -168,7 +189,8 @@ def _change_list(changes, stats, direction):
         pct = (math.exp(log_ratio) - 1) * 100
         kind_label = "" if kind == "keyword" else f'<span class="change-kind">{html.escape(kind)}</span>'
         out += (
-            f'<li class="bar-row" title="{html.escape(label)}: {count} articles now, {past_share:.1%} of articles before">'
+            f'<li class="bar-row" title="{html.escape(label)}: {count} article{"" if count == 1 else "s"} now '
+            f'({count / stats["n_articles"]:.1%}), {past_share:.1%} before">'
             f'<span class="bar-label">{html.escape(label)}{kind_label}</span>'
             f'<span class="bar-track"><span class="bar" style="width:{abs(log_ratio) / biggest * 100:.1f}%"></span></span>'
             f'<span class="bar-value">{pct:+.0f}%</span></li>'
@@ -176,7 +198,7 @@ def _change_list(changes, stats, direction):
     return out + "</ul>"
 
 
-def _render_view(view_id, stats, rising, falling, history_since, journal=None):
+def _render_view(view_id, stats, rising, falling, history_since, journal=None, n_baseline=0):
     """One view of the page (all articles, or preprints only). `journal` restricts the search links."""
     n = stats["n_articles"]
     preprints = view_id == "preprints"
@@ -203,8 +225,6 @@ def _render_view(view_id, stats, rising, falling, history_since, journal=None):
         ]
         intro = (f"What the {n:,} articles published in the last 30 days are about. Counts are numbers of articles; "
                  "percentages are shares of all articles.")
-    keyword_source = ("OpenAlex keywords (preprints are not in PubMed)" if preprints
-                      else "MeSH terms and author keywords from PubMed, or OpenAlex keywords")
     tiles_html = "".join(
         f'<div class="stat-tile"><span class="stat-label">{label}</span><span class="stat-value">{value}</span></div>'
         for label, value in tiles
@@ -228,6 +248,8 @@ def _render_view(view_id, stats, rising, falling, history_since, journal=None):
         for title, sub, body in cards
     )
 
+    compared_with = ("the average of the previous " + (f"{n_baseline} periods" if n_baseline > 1 else "period")
+                     if n_baseline else "about a month earlier")
     if rising or falling:
         changes_html = (
             '<div class="change-grid">'
@@ -251,13 +273,13 @@ def _render_view(view_id, stats, rising, falling, history_since, journal=None):
 
     <section class="viz-card viz-wide">
       <h2>Most frequent keywords</h2>
-      <p class="viz-sub">{keyword_source}; spelling variants merged</p>
+      <p class="viz-sub">OpenAlex keywords (the same source for every article, so periods can be compared); spelling variants merged</p>
       <div class="chips">{chips or '<p class="viz-empty">No keywords yet.</p>'}</div>
     </section>
 
     <section class="viz-card viz-wide">
       <h2>Rising and falling</h2>
-      <p class="viz-sub">Share of {'preprints' if preprints else 'articles'} now compared with about a month earlier</p>
+      <p class="viz-sub">Share of {'preprints' if preprints else 'articles'} now compared with {compared_with}</p>
       {changes_html}
     </section>
 
@@ -266,7 +288,7 @@ def _render_view(view_id, stats, rising, falling, history_since, journal=None):
 """
 
 
-def render_page(views, date, html_file="trends.html"):
+def render_page(views, date, html_file):
     """views: [(view id, switch label, page heading, view html)]; the first one is shown by default."""
     switch = "".join(
         f'<button type="button" role="tab" class="nav-pill{" active" if i == 0 else ""}" id="tab-{view_id}" '
@@ -335,7 +357,7 @@ def render_page(views, date, html_file="trends.html"):
     print(f"Trends page saved to {html_file}")
 
 
-def build_trends(articles, date):
+def build_trends(articles, date, html_file="trends.html"):
     """All articles, plus the bioRxiv preprints on their own (saved in the same snapshot)."""
     stats = compute_stats(articles, date)
     stats["preprints"] = compute_stats([a for a in articles if a["journal"] == "Biorxiv"], date)
@@ -349,5 +371,6 @@ def build_trends(articles, date):
          [b["preprints"] for b in baseline if "preprints" in b], "biorxiv"),
     ]:
         rising, falling = compute_changes(view_stats, past) if past else ([], [])
-        views.append((view_id, label, heading, _render_view(view_id, view_stats, rising, falling, history_since, journal)))
-    render_page(views, date)
+        views.append((view_id, label, heading,
+                      _render_view(view_id, view_stats, rising, falling, history_since, journal, len(past))))
+    render_page(views, date, html_file)
