@@ -181,10 +181,29 @@ def load_filter_words(filename="article_filter_words"):
         return []
 
 
+def format_date(raw):
+    """'2026-10-05' -> '5 Oct 2026', '2026/10' -> 'Oct 2026'; anything else is returned unchanged."""
+    parts = re.split(r'[-/]', raw or '')
+    try:
+        year, month = int(parts[0]), int(parts[1])
+        label = datetime(year, month, 1).strftime('%b %Y')
+        return f"{int(parts[2])} {label}" if len(parts) > 2 else label
+    except (ValueError, IndexError):
+        return parts[0] if parts[0].isdigit() else (raw or "N/A")
+
+
+def short_authors(authors, n=3):
+    """First n authors followed by 'et al.' when the list is longer."""
+    names = [a.strip() for a in authors.split(';') if a.strip()]
+    if len(names) <= n:
+        return authors
+    return '; '.join(names[:n]) + ' et al.'
+
+
 def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.html"):
     """Generate the final HTML file.
        - Every article is rendered once, grouped in one collapsible section per journal
-       - The dropdown and the search filter those sections client-side (script.js)
+       - The journal sidebar (a bottom sheet on mobile) and the search filter those sections client-side (script.js)
        - All text is HTML-escaped
     """
     tree = ET.parse(xml_file)
@@ -192,7 +211,7 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
     update_date = root.attrib.get('updated', 'N/A')
     filter_words = load_filter_words()
 
-    dropdown_options = ""
+    journal_nav = ""
     sections_html = ""
     total_articles = 0
 
@@ -208,29 +227,42 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
                 continue
             doi = article.findtext('DOI') or "#"
             authors = clean_text(article.findtext('Authors')) or "N/A"
-            pub_date = article.findtext('PublicationDate') or "N/A"
-            art_type = article.findtext('Type') or "N/A"
+            pub_date = format_date(article.findtext('PublicationDate'))
+            art_type = article.findtext('Type') or ""
             abstract = clean_text(article.findtext('Abstract'))
-            if not abstract or abstract == "No preview available":
+            has_abstract = bool(abstract) and abstract != "No preview available"
+            if not has_abstract:
                 abstract = "No abstract available"
+
+            # 'journal-article' is almost every CrossRef item, so only show the other types
+            type_tag = f'<span class="tag">{html.escape(art_type)}</span>' if art_type and art_type != 'journal-article' else ''
+            abstract_tag = '<span class="tag tag-abstract">Abstract</span>' if has_abstract else ''
 
             articles_html += (
                 '<li class="article-item"><details><summary>'
                 f'<span class="article-title">{html.escape(title)}</span>'
-                f'<span class="article-meta"><em>Authors:</em> <span class="article-authors">{html.escape(authors)}</span></span>'
-                f'<span class="article-meta"><em>Published:</em> {html.escape(pub_date)} ({html.escape(art_type)})</span>'
-                f'</summary><p class="abstract">{html.escape(abstract)}</p></details>'
-                f'<a href="{html.escape(doi)}" target="_blank" rel="noopener" class="read-more-link">Read More</a></li>\n'
+                f'<span class="article-authors-short">{html.escape(short_authors(authors))}</span>'
+                f'<span class="article-meta"><span>{html.escape(pub_date)}</span>{type_tag}{abstract_tag}</span>'
+                '</summary><div class="article-body">'
+                f'<p class="article-authors">{html.escape(authors)}</p>'
+                f'<p class="abstract">{html.escape(abstract)}</p></div></details>'
+                f'<a href="{html.escape(doi)}" target="_blank" rel="noopener" class="read-more-link">Read article &#8599;</a></li>\n'
             )
             n_articles += 1
 
         total_articles += n_articles
-        dropdown_options += f'<option value="{journal_id}">{html.escape(journal_name)} ({n_articles})</option>'
+        journal_nav += (
+            f'<li><button type="button" class="journal-link" data-journal="{journal_id}">'
+            f'<span class="journal-link-name">{html.escape(journal_name)}</span>'
+            f'<span class="nav-count">{n_articles}</span></button></li>\n'
+        )
         sections_html += f"""
 <section class="journal-section" id="{journal_id}">
-  <h3 class="journal-header" role="button" tabindex="0" aria-expanded="true">
-    <span class="toggle-icon">-</span> {html.escape(journal_name)} <span class="journal-count">({n_articles})</span>
-  </h3>
+  <h2 class="journal-header" role="button" tabindex="0" aria-expanded="true">
+    <span class="toggle-icon" aria-hidden="true"></span>
+    <span class="journal-name">{html.escape(journal_name)}</span>
+    <span class="journal-count">{n_articles}</span>
+  </h2>
   <ul class="article-list">
 {articles_html}  </ul>
 </section>
@@ -241,41 +273,56 @@ def generate_html_from_xml(xml_file="all_journals_toc.xml", html_file="index.htm
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-  />
+  <meta name="color-scheme" content="dark light">
   <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>NeuroTOC</title>
   <link rel="stylesheet" type="text/css" href="style.css">
   <script src="script.js" defer></script>
 </head>
 <body data-updated="{html.escape(update_date)}">
-  <h1>NeuroTOC</h1>
-  <h2 style="text-align: center;">Updated: {html.escape(update_date.split(' ')[0])}</h2>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#" aria-label="NeuroTOC home">
+        <img src="logo.svg" alt="" width="32" height="32">
+        <span class="brand-text">NeuroTOC</span>
+      </a>
+      <span class="updated">Updated {html.escape(update_date.split(' ')[0])}</span>
+      <input type="search" id="searchInput" placeholder="Search titles, authors, abstracts..." aria-label="Search articles">
+      <button type="button" id="journalsButton" class="journals-button" aria-controls="sidebar" aria-expanded="false">
+        <span id="journalsButtonLabel">All journals</span> &#9662;
+      </button>
+    </div>
+  </header>
 
-  <input type="search" id="searchInput" placeholder="Search titles, authors, abstracts..." aria-label="Search articles">
-  <p id="articleCount" class="article-count">Showing {total_articles} articles</p>
+  <div class="layout">
+    <nav id="sidebar" class="sidebar" aria-label="Journals">
+      <div class="sidebar-head">
+        <span>Journals</span>
+        <button type="button" id="sidebarClose" class="sidebar-close" aria-label="Close journal list">&#10005;</button>
+      </div>
+      <ul class="journal-nav">
+        <li><button type="button" class="journal-link" data-journal="All_Journals">
+          <span class="journal-link-name">All journals</span><span class="nav-count">{total_articles}</span></button></li>
+        {journal_nav}
+      </ul>
+    </nav>
 
-  <div class="custom-select">
-    <select id="journalSelect" aria-label="Journal">
-      <option value="All_Journals">All Journals ({total_articles})</option>
-      {dropdown_options}
-    </select>
+    <main id="journals">
+      <div class="results-bar">
+        <p class="article-count"><span id="articleCount">Showing {total_articles} articles</span><span class="updated-inline"> &middot; Updated {html.escape(update_date.split(' ')[0])}</span></p>
+        <div class="toolbar">
+          <button type="button" id="expandAll">Expand all</button>
+          <button type="button" id="collapseAll">Collapse all</button>
+        </div>
+      </div>
+      {sections_html}
+    </main>
   </div>
 
-  <div class="toolbar">
-    <button type="button" id="expandAll">Expand all</button>
-    <button type="button" id="collapseAll">Collapse all</button>
-  </div>
+  <div id="sheetBackdrop" class="sheet-backdrop" hidden></div>
 
-  <div id="journals" class="journal-content">
-    {sections_html}
-  </div>
-
-  <!-- Centered home button at bottom -->
-  <button onclick="scrollToTop()" class="home-button" aria-label="Back to top">
-    <i class="fas fa-home"></i>
+  <button type="button" id="toTop" class="to-top" aria-label="Back to top" hidden>
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5l-7 7m7-7l7 7M12 5v14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>
 </body>
 </html>

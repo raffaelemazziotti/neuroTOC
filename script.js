@@ -1,5 +1,7 @@
 // Each journal section, with its articles and the text used for searching
 let sections = [];
+let navLinks = [];
+let selectedJournal = 'All_Journals';
 let searchTimer = null;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -9,17 +11,23 @@ document.addEventListener("DOMContentLoaded", () => {
     list: sec.querySelector('.article-list'),
     countEl: sec.querySelector('.journal-count'),
     items: Array.from(sec.querySelectorAll('.article-item')).map(el => {
-      const fields = ['.article-title', '.article-authors', '.abstract']
+      // searchable fields + the short author list, which is only highlighted
+      const fields = ['.article-title', '.article-authors', '.abstract', '.article-authors-short']
         .map(sel => el.querySelector(sel))
         .filter(Boolean)
         .map(node => ({ node, text: node.textContent }));
       return {
         el,
         fields,
-        search: fields.map(f => f.text).join(' ').toLowerCase(),
+        search: fields.slice(0, 3).map(f => f.text).join(' ').toLowerCase(),
         highlighted: ''
       };
     })
+  }));
+  navLinks = Array.from(document.querySelectorAll('.journal-link')).map(btn => ({
+    btn,
+    id: btn.dataset.journal,
+    countEl: btn.querySelector('.nav-count')
   }));
 
   const body = document.body;
@@ -42,16 +50,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Setup input listeners
   document.getElementById('searchInput').addEventListener('input', onSearchChange);
-  document.getElementById('journalSelect').addEventListener('change', onJournalSelect);
   document.getElementById('expandAll').addEventListener('click', () => setAllSections(true));
   document.getElementById('collapseAll').addEventListener('click', () => setAllSections(false));
+  document.getElementById('toTop').addEventListener('click', scrollToTop);
 
+  trackTopbarHeight(); // sticky headers sit right below the top bar
+  setupJournalNav(); // sidebar on desktop, bottom sheet on mobile
   setupAccordion(); // collapsible journal sections
   setupArticleCards(); // toggle abstract on article click, ignoring read-more link
   applyFilters(); // initial search + journal filter
   if (savedUpdatedDate === currentUpdatedDate) restoreScrollPosition();
-  setupScrollSave(); // track scroll
+  setupScrollSave(); // track scroll + back-to-top button
 });
+
+// -------------------------------------------
+// 0) LAYOUT
+function trackTopbarHeight() {
+  const topbar = document.querySelector('.topbar');
+  const update = () => document.documentElement.style.setProperty('--topbar-h', `${topbar.offsetHeight}px`);
+  new ResizeObserver(update).observe(topbar);
+  update();
+}
 
 // -------------------------------------------
 // 1) ACCORDION (JOURNAL SECTIONS)
@@ -69,10 +88,12 @@ function setupAccordion() {
 function setSectionOpen(s, open) {
   s.list.hidden = !open;
   s.header.setAttribute('aria-expanded', open);
-  s.header.querySelector('.toggle-icon').textContent = open ? '-' : '+';
 }
 function toggleSection(s) {
+  const wasStuck = s.header.getBoundingClientRect().top <= s.sec.getBoundingClientRect().top - 1;
   setSectionOpen(s, s.list.hidden);
+  // collapsing from a sticky header: bring the header back into view
+  if (wasStuck && s.list.hidden) s.sec.scrollIntoView({ block: 'start' });
   saveAccordionState();
 }
 function setAllSections(open) {
@@ -94,17 +115,38 @@ function restoreAccordionState() {
 }
 
 // -------------------------------------------
-// 2) JOURNAL SELECT (DROPDOWN)
-function onJournalSelect() {
-  localStorage.setItem("selectedJournal", this.value);
+// 2) JOURNAL NAVIGATION (SIDEBAR / BOTTOM SHEET)
+function setupJournalNav() {
+  navLinks.forEach(link => link.btn.addEventListener('click', () => {
+    selectJournal(link.id);
+    closeSheet();
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }));
+  document.getElementById('journalsButton').addEventListener('click', openSheet);
+  document.getElementById('sidebarClose').addEventListener('click', closeSheet);
+  document.getElementById('sheetBackdrop').addEventListener('click', closeSheet);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
+}
+function selectJournal(id) {
+  selectedJournal = id;
+  localStorage.setItem("selectedJournal", id);
   applyFilters();
 }
 function restoreJournalSelect() {
   const savedJ = localStorage.getItem("selectedJournal");
-  const select = document.getElementById('journalSelect');
-  if (savedJ && select.querySelector(`option[value="${CSS.escape(savedJ)}"]`)) {
-    select.value = savedJ;
-  }
+  if (savedJ && navLinks.some(link => link.id === savedJ)) selectedJournal = savedJ;
+}
+function openSheet() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sheetBackdrop').hidden = false;
+  document.getElementById('journalsButton').setAttribute('aria-expanded', 'true');
+  const active = document.querySelector('.journal-link.active');
+  if (active) active.focus();
+}
+function closeSheet() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sheetBackdrop').hidden = true;
+  document.getElementById('journalsButton').setAttribute('aria-expanded', 'false');
 }
 
 // -------------------------------------------
@@ -124,10 +166,11 @@ function restoreSearchWord() {
 function applyFilters() {
   const query = document.getElementById('searchInput').value.toLowerCase().trim();
   const words = query.split(/\s+/).filter(Boolean);
-  const selected = document.getElementById('journalSelect').value;
   // Highlighting thousands of articles is slow, so skip it for very short queries
   const highlightKey = words.join('').length >= 3 ? words.join(' ') : '';
+  const visibleBySection = {};
   let count = 0;
+  let total = 0;
 
   sections.forEach(s => {
     let visible = 0;
@@ -139,11 +182,24 @@ function applyFilters() {
         if (item.highlighted !== highlightKey) highlightItem(item, words, highlightKey);
       }
     });
+    visibleBySection[s.sec.id] = visible;
+    total += visible;
 
-    const journalShown = (selected === 'All_Journals' || s.sec.id === selected);
+    const journalShown = (selectedJournal === 'All_Journals' || s.sec.id === selectedJournal);
     s.sec.hidden = !journalShown || (words.length > 0 && visible === 0);
-    s.countEl.textContent = words.length ? `(${visible}/${s.items.length})` : `(${s.items.length})`;
+    s.countEl.textContent = words.length ? `${visible} / ${s.items.length}` : `${s.items.length}`;
     if (journalShown) count += visible;
+  });
+
+  // Sidebar: counts follow the search, the selected journal is highlighted
+  navLinks.forEach(link => {
+    const n = link.id === 'All_Journals' ? total : visibleBySection[link.id];
+    link.countEl.textContent = n;
+    link.btn.classList.toggle('active', link.id === selectedJournal);
+    link.btn.classList.toggle('empty', n === 0);
+    if (link.id === selectedJournal) {
+      document.getElementById('journalsButtonLabel').textContent = link.btn.querySelector('.journal-link-name').textContent;
+    }
   });
 
   document.getElementById('articleCount').textContent = `Showing ${count} article${count !== 1 ? 's' : ''}`;
@@ -168,11 +224,15 @@ function highlightItem(item, words, highlightKey) {
 }
 
 // -------------------------------------------
-// 4) SCROLL POSITION
+// 4) SCROLL POSITION + BACK-TO-TOP BUTTON
 function setupScrollSave() {
-  window.addEventListener('scroll', () => {
+  const toTop = document.getElementById('toTop');
+  const onScroll = () => {
     localStorage.setItem("scrollPosition", window.scrollY);
-  });
+    toTop.hidden = window.scrollY < 600;
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
 }
 function restoreScrollPosition() {
   const savedPos = localStorage.getItem("scrollPosition");
@@ -199,8 +259,4 @@ function setupArticleCards() {
 // 6) SCROLL TO TOP
 function scrollToTop() {
   window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
-  setTimeout(() => {
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, 800);
 }
